@@ -1,0 +1,373 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { formatPrice, calcPackageFromCart, describePackage, isValidEmail, isValidPhoneAR } from "@cancerianas/shared";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+
+export default function CheckoutClient() {
+  const supabase = createSupabaseBrowser();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [contact, setContact] = useState({ full_name: "", email: "", phone: "" });
+  const [paymentMethods, setPaymentMethods] = useState<any>({});
+  const [selectedMethod, setSelectedMethod] = useState<"transfer" | "mercadopago" | null>(null);
+  // Orden creada tras confirmar transferencia
+  const [confirmedOrder, setConfirmedOrder] = useState<{ order_number: string; alias: string; bank: string; cbu: string; holder: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/auth?redirect=/checkout"); return; }
+      setUser(user);
+
+      const [{ data: prof }, { data: cart }, { data: pmRow }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("carts").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
+        supabase.from("site_settings").select("value").eq("key", "payment_methods").maybeSingle(),
+      ]);
+
+      setProfile(prof);
+      setContact({ full_name: prof?.full_name ?? "", email: user.email ?? "", phone: prof?.phone ?? "" });
+
+      const pm = pmRow?.value ?? {};
+      setPaymentMethods(pm);
+      // Preseleccionar el Ãºnico mÃ©todo habilitado si hay uno solo
+      const available = [pm.transfer_enabled && "transfer", pm.mercadopago_enabled && "mercadopago"].filter(Boolean) as ("transfer" | "mercadopago")[];
+      if (available.length === 1) setSelectedMethod(available[0]);
+
+      if (cart) {
+        const { data: cartItems } = await supabase
+          .from("cart_items")
+          .select("*, products(name, images, slug, weight_grams, length_cm, width_cm, height_cm), product_variants(name)")
+          .eq("cart_id", cart.id);
+        setItems(cartItems ?? []);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const subtotal = items.reduce((sum, it) => sum + Number(it.unit_price) * it.quantity, 0);
+
+  const pkg = calcPackageFromCart(
+    items.map((it) => ({
+      quantity: it.quantity,
+      weight_grams: it.products?.weight_grams,
+      length_cm: it.products?.length_cm,
+      width_cm: it.products?.width_cm,
+      height_cm: it.products?.height_cm,
+    }))
+  );
+  const pkgDescription = describePackage(items, pkg);
+
+  async function removeItem(id: string) {
+    await supabase.from("cart_items").delete().eq("id", id);
+    setItems(items.filter((i) => i.id !== id));
+  }
+
+  async function createOrder(method: "transfer" | "mercadopago") {
+    if (!contact.full_name.trim()) return toast.error("Falta el nombre");
+    if (!contact.email.trim() || !isValidEmail(contact.email)) return toast.error("Email invÃ¡lido");
+    if (contact.phone && !isValidPhoneAR(contact.phone)) return toast.error("NÃºmero de WhatsApp invÃ¡lido");
+    if (items.length === 0) return toast.error("Tu carrito estÃ¡ vacÃ­o");
+    setSubmitting(true);
+    try {
+      if (profile && (profile.full_name !== contact.full_name || profile.phone !== contact.phone)) {
+        await supabase.from("profiles").update({ full_name: contact.full_name, phone: contact.phone }).eq("id", user.id);
+      }
+
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          status: "pending",
+          source: "catalog",
+          subtotal,
+          shipping_cost: 0,
+          total: subtotal,
+          payment_method: method,
+          shipping_address: { full_name: contact.full_name, email: contact.email, phone: contact.phone },
+        })
+        .select()
+        .single();
+      if (orderError || !order) throw new Error(orderError?.message || "No se pudo crear la orden");
+
+      const orderItems = items.map((it) => ({
+        order_id: order.id,
+        product_id: it.product_id,
+        variant_id: it.variant_id,
+        description: (it.products?.name ?? "Producto") + (it.product_variants ? ` (${it.product_variants.name})` : ""),
+        image_url: it.products?.images?.[0],
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        subtotal: it.unit_price * it.quantity,
+      }));
+      await supabase.from("order_items").insert(orderItems);
+
+      // Marcar carrito como convertido
+      await supabase.from("carts").update({ status: "converted" }).eq("user_id", user.id).eq("status", "active");
+
+      if (method === "transfer") {
+        setConfirmedOrder({
+          order_number: order.order_number,
+          alias: paymentMethods.transfer_alias ?? "",
+          bank: paymentMethods.transfer_bank ?? "",
+          cbu: paymentMethods.transfer_cbu ?? "",
+          holder: paymentMethods.transfer_holder ?? "",
+        });
+      } else {
+        // Mercado Pago
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-preference`,
+          { method: "POST", headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ type: "order", id: order.id }) }
+        );
+        const result = await res.json();
+        if (!res.ok || !result.init_point) throw new Error(result.error || "No se pudo iniciar el pago");
+        window.location.href = result.init_point;
+      }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const availableMethods = [
+    paymentMethods.transfer_enabled && "transfer",
+    paymentMethods.mercadopago_enabled && "mercadopago",
+  ].filter(Boolean) as ("transfer" | "mercadopago")[];
+
+  if (loading) return (
+    <><Header /><div className="max-w-6xl mx-auto px-4 py-20 text-center text-ink-soft">Cargando...</div><Footer /></>
+  );
+
+  // â”€â”€â”€ PANTALLA DE CONFIRMACIÃ“N DE TRANSFERENCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  if (confirmedOrder) {
+    return (
+      <>
+        <Header />
+        <section className="max-w-2xl mx-auto px-4 py-16">
+          <div className="card text-center space-y-6">
+            <CheckCircle2 className="w-16 h-16 text-success mx-auto" />
+            <div>
+              <h1 className="font-display text-3xl text-ink-primary mb-2">Â¡Orden confirmada! ðŸŒ¸</h1>
+              <p className="text-ink-secondary">Ahora realizÃ¡ la transferencia y tu pedido se prepara enseguida.</p>
+            </div>
+
+            <div className="bg-rose-whisper rounded-2xl p-5 text-left space-y-3">
+              <div className="flex justify-between items-center pb-3 border-b border-rose-pastel">
+                <span className="text-sm text-ink-soft">NÃºmero de orden</span>
+                <span className="font-mono font-bold text-ink-primary text-lg">{confirmedOrder.order_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-ink-soft">Total a transferir</span>
+                <span className="font-bold text-rose-deep text-xl">{formatPrice(subtotal)}</span>
+              </div>
+            </div>
+
+            <div className="bg-white border-2 border-rose-pastel rounded-2xl p-5 text-left space-y-3">
+              <h3 className="font-display text-lg text-ink-primary">Datos bancarios</h3>
+              {confirmedOrder.holder && <Row label="Titular" value={confirmedOrder.holder} />}
+              {confirmedOrder.alias && <Row label="Alias" value={confirmedOrder.alias} copy />}
+              {confirmedOrder.cbu && <Row label="CBU" value={confirmedOrder.cbu} copy />}
+              {confirmedOrder.bank && <Row label="Banco" value={confirmedOrder.bank} />}
+            </div>
+
+            <div className="bg-rose-deep/10 rounded-2xl p-4 text-sm text-ink-primary text-left space-y-1">
+              <p className="font-bold">ðŸ“ Importante: en el asunto/descripciÃ³n de la transferencia escribÃ­:</p>
+              <p className="font-mono text-rose-deep font-bold text-base text-center py-1">ORDEN {confirmedOrder.order_number}</p>
+              <p className="text-ink-soft text-xs">AsÃ­ identificamos tu pago automÃ¡ticamente y procesamos tu pedido mÃ¡s rÃ¡pido.</p>
+            </div>
+
+            <p className="text-sm text-ink-secondary">Una vez que confirmemos el pago, te avisamos por email para que elijas el mÃ©todo de envÃ­o.</p>
+
+            <a href={`/orders`} className="btn-primary w-full flex items-center justify-center gap-2">
+              Ver mis Ã³rdenes
+            </a>
+          </div>
+        </section>
+        <Footer />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Header />
+      <section className="max-w-6xl mx-auto px-4 py-10">
+        <h1 className="font-display text-4xl text-ink-primary mb-2">Tu carrito</h1>
+        <p className="text-ink-secondary mb-8">{pkgDescription}</p>
+
+        {items.length === 0 ? (
+          <div className="card text-center py-20">
+            <div className="text-6xl mb-4">ðŸ›ï¸</div>
+            <p className="text-ink-secondary mb-6">Tu carrito estÃ¡ vacÃ­o.</p>
+            <button onClick={() => router.push("/")} className="btn-primary">Ir a la tienda</button>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-[1fr_400px] gap-8">
+            <div className="space-y-6">
+              {/* Items */}
+              <div className="card space-y-4">
+                <h2 className="font-display text-xl">Productos</h2>
+                {items.map((it) => (
+                  <div key={it.id} className="flex gap-4 pb-4 border-b border-rose-pastel last:border-0">
+                    <div className="w-20 h-20 rounded-2xl bg-rose-pastel overflow-hidden flex-shrink-0">
+                      {it.products?.images?.[0] && <img src={it.products.images[0]} alt="" className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-ink-primary line-clamp-1">{it.products?.name}</p>
+                      {it.product_variants && <p className="text-sm text-ink-soft">{it.product_variants.name}</p>}
+                      <p className="text-sm text-ink-secondary mt-1">x{it.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-rose-deep">{formatPrice(it.unit_price * it.quantity)}</p>
+                      <button onClick={() => removeItem(it.id)} className="text-ink-soft hover:text-error mt-1"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Datos de contacto */}
+              <div className="card space-y-4">
+                <h2 className="font-display text-xl">Tus datos</h2>
+                <div className="space-y-3">
+                  <input className="input" placeholder="Nombre completo" autoComplete="name" value={contact.full_name} onChange={(e) => setContact({ ...contact, full_name: e.target.value })} />
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
+                    <input className="input pl-11" type="email" placeholder="Email" autoComplete="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
+                  </div>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
+                    <input className="input pl-11" type="tel" placeholder="WhatsApp (opcional)" autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              {/* MÃ©todo de pago */}
+              {availableMethods.length > 0 && (
+                <div className="card space-y-4">
+                  <h2 className="font-display text-xl">CÃ³mo querÃ©s pagar</h2>
+                  <div className="space-y-3">
+                    {paymentMethods.transfer_enabled && (
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${selectedMethod === "transfer" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                        <input type="radio" name="payment" className="mt-1 accent-rose-deep" checked={selectedMethod === "transfer"} onChange={() => setSelectedMethod("transfer")} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Banknote className="w-5 h-5 text-rose-deep" />
+                            <span className="font-semibold text-ink-primary">Transferencia bancaria / Alias</span>
+                          </div>
+                          <p className="text-xs text-ink-soft mt-1">TransferÃ­s al alias que te indicamos y te confirmamos el pedido manualmente.</p>
+                        </div>
+                      </label>
+                    )}
+                    {paymentMethods.mercadopago_enabled && (
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${selectedMethod === "mercadopago" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                        <input type="radio" name="payment" className="mt-1 accent-rose-deep" checked={selectedMethod === "mercadopago"} onChange={() => setSelectedMethod("mercadopago")} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="w-5 h-5 text-rose-deep" />
+                            <span className="font-semibold text-ink-primary">Mercado Pago</span>
+                          </div>
+                          <p className="text-xs text-ink-soft mt-1">Tarjeta de crÃ©dito/dÃ©bito, dinero en cuenta MP o cuotas.</p>
+                        </div>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {availableMethods.length === 0 && (
+                <div className="card bg-warning/10 border border-warning/40 text-center py-6">
+                  <p className="font-semibold text-ink-primary">La tienda no tiene mÃ©todos de pago habilitados.</p>
+                  <p className="text-ink-soft text-sm mt-1">Contactanos por WhatsApp para coordinar tu compra.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Resumen lateral */}
+            <div className="card h-fit space-y-4 sticky top-24">
+              <h2 className="font-display text-xl">Resumen</h2>
+
+              <div className="rounded-2xl bg-rose-pastel/50 p-4 flex items-start gap-3">
+                <Truck className="w-5 h-5 text-rose-deep flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <strong className="text-ink-primary">EnvÃ­o en dos pasos.</strong>
+                  <ul className="mt-1 space-y-1 text-ink-secondary">
+                    <li>1ï¸âƒ£ ConfirmÃ¡s y pagÃ¡s los productos.</li>
+                    <li>2ï¸âƒ£ Cuando confirmemos el pago, te mandamos el link para elegir el envÃ­o.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-ink-soft">Subtotal productos</span>
+                  <span>{formatPrice(subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-soft">EnvÃ­o</span>
+                  <span className="text-ink-soft italic">se cotiza aparte</span>
+                </div>
+              </div>
+              <div className="border-t border-rose-pastel pt-3 flex justify-between items-baseline">
+                <span className="font-display text-xl">Total</span>
+                <span className="font-display text-2xl font-bold text-rose-deep">{formatPrice(subtotal)}</span>
+              </div>
+
+              <button
+                onClick={() => selectedMethod && createOrder(selectedMethod)}
+                disabled={submitting || !selectedMethod || availableMethods.length === 0}
+                className="btn-primary w-full py-4 disabled:opacity-50"
+              >
+                {submitting
+                  ? "Procesando..."
+                  : selectedMethod === "transfer"
+                  ? "Confirmar pedido por transferencia"
+                  : "Pagar con Mercado Pago"}
+              </button>
+
+              <div className="text-xs text-ink-soft flex items-start gap-2 leading-relaxed">
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>
+                  Al pagar reservás los productos. Tenés 7 días para completar el envío. Si no lo
+                  hacés, te reembolsamos.
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <Footer />
+    </>
+  );
+}
+
+function Row({ label, value, copy }: { label: string; value: string; copy?: boolean }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-ink-soft">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="font-mono font-semibold text-ink-primary">{value}</span>
+        {copy && (
+          <button
+            onClick={() => { navigator.clipboard.writeText(value); toast.success("Copiado"); }}
+            className="text-xs text-rose-deep hover:underline"
+          >
+            Copiar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

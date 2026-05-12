@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  :root {
+    --rose-deep: #E66B85;
+    --rose-primary: #FF8FA3;
+    --rose-medium: #FFB3C6;
+    --rose-pastel: #FFE5EC;
+    --rose-whisper: #FFF0F4;
+    --cream: #FFF7F9;
+    --ink-primary: #3D2A33;
+    --ink-secondary: #5C4853;
+    --ink-soft: #8E7A82;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--cream);
+    color: var(--ink-primary);
+    font-family: "Montserrat", system-ui, sans-serif;
+    background-image:
+      radial-gradient(at 0% 0%, rgba(255, 179, 198, 0.25) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(255, 229, 236, 0.4) 0px, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--rose-medium);
+    color: var(--ink-primary);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-semibold text-white transition-all;
+    background: linear-gradient(135deg, #FF8FA3 0%, #FFB3C6 100%);
+    box-shadow: 0 8px 24px rgba(255, 143, 163, 0.25);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(255, 143, 163, 0.35);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-rose-medium bg-white px-6 py-3 font-semibold text-ink-primary transition-all;
+  }
+  .btn-secondary:hover {
+    background: var(--rose-whisper);
+  }
+
+  .card {
+    @apply rounded-3xl bg-white p-6 shadow-soft;
+  }
+
+  .input {
+    @apply w-full rounded-2xl border border-rose-medium/40 bg-white px-4 py-3 text-ink-primary placeholder:text-ink-soft focus:border-rose-primary focus:outline-none focus:ring-2 focus:ring-rose-pastel;
+  }
+
+  .badge-live {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-rose-deep px-3 py-1 text-xs font-bold uppercase tracking-wider text-white;
+  }
+
+  .badge-live::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 999px;
+    animation: soft-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+/* Petalitos decorativos */
+.petal-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 5 Q25 15 20 25 Q15 15 20 5 Z' fill='%23FFB3C6' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}

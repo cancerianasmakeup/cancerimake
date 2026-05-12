@@ -1,0 +1,13 @@
+{
+  "name": "Cancerianas",
+  "short_name": "Cancerianas",
+  "description": "Tienda y LIVE shopping para mujeres libres",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF7F9",
+  "theme_color": "#FF8FA3",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

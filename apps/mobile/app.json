@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Cancerianas",
+    "slug": "cancerianas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "cancerianas",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "backgroundColor": "#FFE5EC",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cancerianas.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFE5EC"
+      },
+      "package": "com.cancerianas.app",
+      "permissions": ["INTERNET"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
