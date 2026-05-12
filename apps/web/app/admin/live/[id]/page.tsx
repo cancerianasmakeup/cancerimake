@@ -450,7 +450,7 @@ function PurchasesTab({ purchases, onMarkPending, onDiscardPending, onMarkAttend
         p.paid_at ? new Date(p.paid_at).toLocaleString("es-AR") : "",
       ]),
     ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows.map((r) => r.map((c: unknown) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
