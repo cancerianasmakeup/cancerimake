@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,14 @@ function GoogleIcon() {
 }
 
 export default function AuthPage() {
+  return (
+    <Suspense>
+      <AuthForm />
+    </Suspense>
+  );
+}
+
+function AuthForm() {
   const supabase = createSupabaseBrowser();
   const router = useRouter();
   const params = useSearchParams();
