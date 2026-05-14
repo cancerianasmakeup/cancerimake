@@ -28,13 +28,14 @@ export default function Header() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
 
-    // Detectar si hay LIVE activo
+    // Detectar si hay LIVE activo. Usamos maybeSingle para no tirar 406
+    // cuando no hay ningún evento activo (lo normal el 99% del tiempo).
     supabase
       .from("live_events")
       .select("id, title")
       .eq("status", "active")
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data }) => setActiveLive(data));
 
     // Cargar settings en paralelo (store_status + brand_info + appearance)
@@ -62,7 +63,7 @@ export default function Header() {
             .select("id, title")
             .eq("status", "active")
             .limit(1)
-            .single()
+            .maybeSingle()
             .then(({ data }) => setActiveLive(data));
         }
       )

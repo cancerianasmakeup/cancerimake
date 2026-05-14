@@ -67,21 +67,20 @@ async function fetchNearbyBranches(lat: number, lng: number, radiusKm: number): 
 
   const needsAddr = items.filter(b => !b.address);
   if (needsAddr.length > 0) {
+    // Pasamos por nuestro proxy /api/reverse-geocode (con caché server-side)
+    // en lugar de hablar directo con Photon — así no expone errores 503/CORS
+    // ruidosos en la consola del browser.
     await Promise.all(
       needsAddr.map(async (b) => {
         try {
-          const photonUrl = `https://photon.komoot.io/reverse?lat=${b.lat}&lon=${b.lng}&lang=es&limit=1`;
-          const r = await fetch(photonUrl, { signal: AbortSignal.timeout(4000) });
+          const r = await fetch(`/api/reverse-geocode?lat=${b.lat}&lng=${b.lng}`, {
+            signal: AbortSignal.timeout(6000),
+          });
           if (!r.ok) return;
           const j = await r.json();
-          const p = j.features?.[0]?.properties;
-          if (!p) return;
-          const street = [p.street, p.housenumber].filter(Boolean).join(" ");
-          const locality = [p.city || p.locality, p.state].filter(Boolean).join(", ");
-          const addr = [street, locality].filter(Boolean).join(" · ");
-          if (addr) b.address = addr;
+          if (j?.address) b.address = j.address;
         } catch {
-          // ignoramos errores de reverse geocoding individuales
+          // silencioso: si falla, queda sin address y se ve "Ver en mapa"
         }
       })
     );
