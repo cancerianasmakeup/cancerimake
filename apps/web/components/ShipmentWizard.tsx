@@ -14,10 +14,13 @@ import {
   Sparkles,
   HandCoins,
   Clock,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
+import TransferInstructions from "@/components/TransferInstructions";
+import PaymentProofUploader from "@/components/PaymentProofUploader";
 
 type Step = "auth-check" | "carrier" | "method" | "address" | "branch" | "custom-request" | "custom-waiting" | "confirm" | "paying" | "done";
 
@@ -79,6 +82,8 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
   });
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
   const [extras, setExtras] = useState<any>({});
+  const [paymentMethods, setPaymentMethods] = useState<any>({});
+  const [brand, setBrand] = useState<{ whatsapp?: string }>({});
   const [carrier, setCarrier] = useState<ShipmentCarrier>("andreani");
   const [customMessage, setCustomMessage] = useState("");
   // Cotizaciones por carrier (Andreani + Correo en paralelo)
@@ -97,11 +102,16 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
       router.push(`/auth?redirect=/shipment/${shipmentId}`);
       return;
     }
-    const [{ data: s }, { data: p }, { data: ext }] = await Promise.all([
+    const [{ data: s }, { data: p }, { data: settingsRows }] = await Promise.all([
       supabase.from("shipments").select("*").eq("id", shipmentId).single(),
       supabase.from("profiles").select("*").eq("id", user.id).single(),
-      supabase.from("site_settings").select("value").eq("key", "shipping_extras").single(),
+      supabase.from("site_settings").select("key, value").in("key", ["shipping_extras", "payment_methods", "brand_info"]),
     ]);
+    const settingsMap: Record<string, any> = {};
+    (settingsRows ?? []).forEach((r: any) => { settingsMap[r.key] = r.value; });
+    const ext = { value: settingsMap.shipping_extras ?? {} };
+    setPaymentMethods(settingsMap.payment_methods ?? {});
+    setBrand(settingsMap.brand_info ?? {});
     if (!s) {
       toast.error("Envío no encontrado o no es tuyo");
       router.push("/account");
@@ -121,8 +131,8 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
 
     // Status-driven step
     if (s.status === "pending_address") setStep("carrier");
-    else if (s.status === "pending_custom_quote") setStep("custom-waiting");
-    else if (s.status === "pending_payment") setStep("confirm");
+    else if (s.status === "pending_custom_quote" || s.status === "pending_quote") setStep("custom-waiting");
+    else if (s.status === "pending_payment" || s.status === "pending_approval") setStep("confirm");
     else if (s.status === "paid" || s.status === "label_generated" || ["dispatched", "in_transit", "out_for_delivery", "delivered"].includes(s.status)) setStep("done");
     else setStep("done");
 
@@ -674,7 +684,7 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           <div className="card">
             <div className="flex justify-between items-center">
               <p className="text-ink-secondary">
-                Total a pagar
+                Total del envío
                 {shipment.carrier === "personalizado" && (
                   <span className="block text-xs text-rose-deep font-bold uppercase tracking-wider mt-0.5">
                     Cotización personalizada
@@ -700,10 +710,39 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
             )}
           </div>
 
-          <button onClick={payNow} disabled={busy} className="btn-primary w-full text-lg py-4">
-            <Truck className="w-5 h-5" />
-            {busy ? "Iniciando pago..." : `Pagar ${formatPrice(Number(shipment.cost_charged))} con Mercado Pago`}
-          </button>
+          {/* PAGO MANUAL (carrier personalizado, transferencia o pago personalizado) */}
+          {shipment.carrier === "personalizado" && paymentMethods.transfer_enabled && (
+            <>
+              <TransferInstructions
+                orderNumber={shipment.id.slice(0, 8).toUpperCase()}
+                total={Number(shipment.cost_charged)}
+                alias={paymentMethods.transfer_alias ?? ""}
+                cbu={paymentMethods.transfer_cbu ?? ""}
+                bank={paymentMethods.transfer_bank ?? ""}
+                holder={paymentMethods.transfer_holder ?? ""}
+              />
+              <PaymentProofUploader
+                entityType="shipment"
+                entityId={shipment.id}
+                userId={shipment.user_id}
+                reference={`ENVIO-${shipment.id.slice(0, 8).toUpperCase()}`}
+                amount={Number(shipment.cost_charged)}
+                whatsappNumber={brand.whatsapp}
+                label="el envío"
+                existingProofUrl={shipment.payment_proof_url}
+                existingViaWhatsapp={shipment.payment_proof_via_whatsapp}
+                currentStatus={shipment.status}
+              />
+            </>
+          )}
+
+          {/* PAGO POR MP (carrier andreani/correo) */}
+          {shipment.carrier !== "personalizado" && (
+            <button onClick={payNow} disabled={busy} className="btn-primary w-full text-lg py-4">
+              <Truck className="w-5 h-5" />
+              {busy ? "Iniciando pago..." : `Pagar ${formatPrice(Number(shipment.cost_charged))} con Mercado Pago`}
+            </button>
+          )}
 
           <button onClick={() => router.push(`/shipment/${shipmentId}`)} className="text-sm text-ink-soft hover:text-rose-deep mx-auto block">
             ← Cambiar dirección
@@ -722,24 +761,40 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
         <div className="card text-center py-10 bg-gradient-to-br from-rose-whisper to-rose-pastel">
           <CheckCircle2 className="w-16 h-16 mx-auto text-success" />
           <h2 className="font-display text-2xl text-ink-primary mt-3">¡Listo! 🌸</h2>
-          {shipment.status === "paid" || shipment.status === "label_generated" ? (
+
+          {(shipment.status === "paid" || shipment.status === "label_generated") && !shipment.tracking_number && !shipment.andreani_tracking_number && (
             <p className="text-ink-secondary mt-2">
               Recibimos tu pago. Estamos preparando el paquete y te avisamos cuando lo despachemos.
             </p>
-          ) : shipment.andreani_tracking_number ? (
+          )}
+
+          {(shipment.tracking_number || shipment.andreani_tracking_number) && (
             <>
-              <p className="text-ink-secondary mt-2">Tu paquete está en camino con Andreani.</p>
+              <p className="text-ink-secondary mt-2">
+                Tu paquete está en camino{shipment.tracking_provider ? ` con ${shipment.tracking_provider}` : shipment.andreani_tracking_number ? " con Andreani" : ""}.
+              </p>
               <div className="bg-white rounded-2xl p-3 mt-4 inline-block">
                 <p className="text-xs uppercase text-ink-soft tracking-wider">Tracking</p>
-                <p className="font-mono font-bold text-ink-primary">{shipment.andreani_tracking_number}</p>
+                <p className="font-mono font-bold text-ink-primary">
+                  {shipment.tracking_number || shipment.andreani_tracking_number}
+                </p>
               </div>
+              {shipment.tracking_url && (
+                <p className="mt-3">
+                  <a href={shipment.tracking_url} target="_blank" rel="noopener" className="text-rose-deep hover:underline text-sm font-semibold">
+                    Seguir el envío →
+                  </a>
+                </p>
+              )}
               {shipment.andreani_estimated_delivery && (
                 <p className="text-sm text-ink-secondary mt-3">
                   📅 Llega aprox el {new Date(shipment.andreani_estimated_delivery).toLocaleDateString("es-AR")}
                 </p>
               )}
             </>
-          ) : (
+          )}
+
+          {!shipment.tracking_number && !shipment.andreani_tracking_number && shipment.status !== "paid" && shipment.status !== "label_generated" && (
             <p className="text-ink-secondary mt-2">Estado actual: {shipment.status}</p>
           )}
         </div>

@@ -44,6 +44,8 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
 
   const [packages, setPackages] = useState<any[]>([]);
+  const [proofSignedUrl, setProofSignedUrl] = useState<string | null>(null);
+  const [trackingInput, setTrackingInput] = useState({ number: "", provider: "Correo Argentino", url: "" });
 
   const load = useCallback(async () => {
     const [{ data: s }, { data: ev }, { data: pp }] = await Promise.all([
@@ -68,6 +70,68 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
     setPackages(pp ?? []);
     setLoading(false);
   }, [shipmentId]);
+
+  // Signed URL del comprobante para preview (si la clienta subió uno)
+  useEffect(() => {
+    if (!shipment?.payment_proof_url) { setProofSignedUrl(null); return; }
+    let cancelled = false;
+    supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(shipment.payment_proof_url, 60 * 60)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data?.signedUrl) setProofSignedUrl(data.signedUrl);
+      });
+    return () => { cancelled = true; };
+  }, [shipment?.payment_proof_url, supabase]);
+
+  // Pre-poblar el campo tracking si admin ya cargó antes
+  useEffect(() => {
+    if (shipment?.tracking_number) {
+      setTrackingInput({
+        number: shipment.tracking_number,
+        provider: shipment.tracking_provider || "Correo Argentino",
+        url: shipment.tracking_url || "",
+      });
+    }
+  }, [shipment?.tracking_number, shipment?.tracking_provider, shipment?.tracking_url]);
+
+  /** Admin aprueba el pago manual del envío (comprobante / WhatsApp): mueve a paid. */
+  async function approveShipmentPayment() {
+    setBusy("approve-shipment");
+    const { data: { user } } = await supabase.auth.getUser();
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("shipments").update({
+      status: "paid",
+      paid_at: now,
+      payment_approved_at: now,
+      payment_approved_by: user?.id ?? null,
+    }).eq("id", shipmentId);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pago del envío aprobado 🌸");
+    load();
+  }
+
+  /** Admin marca el envío como despachado, guardando tracking number genérico. */
+  async function markDispatchedWithTracking() {
+    if (!trackingInput.number.trim()) {
+      toast.error("Cargá el número de seguimiento");
+      return;
+    }
+    setBusy("dispatch");
+    const { error } = await supabase.from("shipments").update({
+      status: "dispatched",
+      dispatched_at: new Date().toISOString(),
+      tracking_number: trackingInput.number.trim(),
+      tracking_provider: trackingInput.provider.trim() || null,
+      tracking_url: trackingInput.url.trim() || null,
+    }).eq("id", shipmentId);
+    setBusy(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marcaste el envío como despachado 🌸");
+    load();
+  }
 
   useEffect(() => {
     load();
@@ -252,7 +316,15 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
               </button>
             </>
           )}
-          {shipment.status === "paid" && (
+          {/* Aprobar pago manual del envío */}
+          {shipment.status === "pending_approval" && (
+            <button onClick={approveShipmentPayment} disabled={busy === "approve-shipment"} className="btn-primary">
+              <CheckCircle2 className="w-4 h-4" />
+              {busy === "approve-shipment" ? "Aprobando..." : "Aprobar pago del envío"}
+            </button>
+          )}
+          {/* Para carriers con API (andreani/correo) - genera etiqueta */}
+          {shipment.status === "paid" && shipment.carrier !== "personalizado" && (
             <button
               onClick={generateLabel}
               disabled={busy === "create-shipment"}
@@ -287,6 +359,79 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           )}
         </div>
       </div>
+
+      {/* CARD: COMPROBANTE DE PAGO DEL ENVÍO */}
+      {(shipment.payment_proof_url || shipment.payment_proof_via_whatsapp) && (
+        <div className="card mb-4 border-2 border-rose-deep/30 bg-rose-whisper/40">
+          <h2 className="font-display text-lg text-ink-primary mb-3">Comprobante de pago del envío</h2>
+          {shipment.payment_proof_via_whatsapp && (
+            <div className="rounded-2xl bg-success/10 border border-success/30 p-3 flex items-start gap-2 mb-3">
+              <MessageCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+              <p className="text-sm">
+                La clienta marcó que envía el comprobante por WhatsApp. Verificá en tu chat con la
+                referencia <strong>ENVIO-{shipment.id.slice(0, 8).toUpperCase()}</strong>.
+              </p>
+            </div>
+          )}
+          {shipment.payment_proof_url && proofSignedUrl && (
+            <a href={proofSignedUrl} target="_blank" rel="noopener" className="block rounded-2xl overflow-hidden border border-rose-pastel hover:shadow-lift transition">
+              {/\.(jpe?g|png|webp)$/i.test(shipment.payment_proof_url) ? (
+                <img src={proofSignedUrl} alt="Comprobante" className="w-full max-h-80 object-contain bg-white" />
+              ) : (
+                <div className="p-4 text-rose-deep font-semibold flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4" /> Ver comprobante (PDF)
+                </div>
+              )}
+            </a>
+          )}
+          {shipment.payment_proof_at && (
+            <p className="text-xs text-ink-soft mt-2">
+              Recibido {new Date(shipment.payment_proof_at).toLocaleString("es-AR")}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* CARD: AGREGAR NÚMERO DE SEGUIMIENTO + DESPACHAR */}
+      {shipment.status === "paid" && shipment.carrier === "personalizado" && (
+        <div className="card mb-4 border-2 border-rose-deep/40 bg-white">
+          <h2 className="font-display text-lg text-ink-primary mb-1">Marcar como enviado</h2>
+          <p className="text-sm text-ink-soft mb-3">Una vez que lo despachaste, cargá el seguimiento para que la clienta lo siga.</p>
+          <div className="grid sm:grid-cols-[1fr_180px] gap-2 mb-2">
+            <div>
+              <label className="block text-xs font-semibold text-ink-soft mb-1">Número de seguimiento</label>
+              <input
+                value={trackingInput.number}
+                onChange={(e) => setTrackingInput({ ...trackingInput, number: e.target.value })}
+                placeholder="Ej: CA123456789AR"
+                className="input !h-10 !text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-ink-soft mb-1">Carrier / proveedor</label>
+              <input
+                value={trackingInput.provider}
+                onChange={(e) => setTrackingInput({ ...trackingInput, provider: e.target.value })}
+                placeholder="Correo Argentino"
+                className="input !h-10 !text-sm"
+              />
+            </div>
+          </div>
+          <div className="mb-3">
+            <label className="block text-xs font-semibold text-ink-soft mb-1">URL de tracking (opcional)</label>
+            <input
+              value={trackingInput.url}
+              onChange={(e) => setTrackingInput({ ...trackingInput, url: e.target.value })}
+              placeholder="https://www.correoargentino.com.ar/formularios/oal?..."
+              className="input !h-10 !text-sm"
+            />
+          </div>
+          <button onClick={markDispatchedWithTracking} disabled={busy === "dispatch" || !trackingInput.number.trim()} className="btn-primary">
+            <Send className="w-4 h-4" />
+            {busy === "dispatch" ? "Despachando..." : "Marcar como enviado"}
+          </button>
+        </div>
+      )}
 
       {/* PAQUETES CONSOLIDADOS */}
       {packages.length > 0 && (
