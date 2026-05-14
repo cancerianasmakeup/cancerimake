@@ -55,12 +55,17 @@ function AuthForm() {
   handleCredentialRef.current = async (idToken: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: "google",
         token: idToken,
       });
       if (error) throw error;
-      toast.success("Hola 🌸");
+      // Google manda 'given_name' (nombre solo) y 'name' (completo) en el JWT,
+      // que Supabase copia a user.user_metadata.
+      const meta = data.user?.user_metadata ?? {};
+      const firstName: string =
+        meta.given_name || meta.first_name || (meta.full_name || meta.name || "").split(" ")[0] || "";
+      toast.success(firstName ? `Hola 🌸 ${firstName}` : "Hola 🌸");
       router.replace(redirect);
     } catch (e: any) {
       toast.error(e.message || "No pudimos entrar con Google");
@@ -99,9 +104,12 @@ function AuthForm() {
 
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success("Hola de nuevo 🌸");
+        const meta = data.user?.user_metadata ?? {};
+        const firstName: string =
+          meta.first_name || meta.given_name || (meta.full_name || meta.name || "").split(" ")[0] || "";
+        toast.success(firstName ? `Hola de nuevo 🌸 ${firstName}` : "Hola de nuevo 🌸");
       } else {
         const fullName = `${name} ${lastName}`.trim();
         const { error } = await supabase.auth.signUp({
@@ -116,7 +124,7 @@ function AuthForm() {
           },
         });
         if (error) throw error;
-        toast.success("¡Bienvenida! 🌸");
+        toast.success(name ? `¡Bienvenida 🌸 ${name}!` : "¡Bienvenida! 🌸");
       }
       router.replace(redirect);
     } catch (e: any) {
