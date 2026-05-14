@@ -15,6 +15,19 @@ const STATUS_INFO: Record<string, { label: string; color: string }> = {
   cancelled:        { label: "Cancelada",          color: "bg-error/30 text-ink-primary" },
 };
 
+/** Cuando una orden está paid pero ya hubo movimientos del envío,
+ *  mostramos un label más específico para que el admin sepa la próxima acción. */
+function getOrderDisplayStatus(order: any) {
+  const shipStatus = order.shipments?.[0]?.status;
+  if (order.status === "paid") {
+    if (shipStatus === "pending_approval") return { label: "Aprobar envío",  color: "bg-rose-deep text-white" };
+    if (shipStatus === "paid")              return { label: "Envío pago",    color: "bg-success/40 text-success animate-soft-pulse" };
+    if (shipStatus === "dispatched")        return { label: "Despachado",    color: "bg-rose-medium/40 text-rose-deep" };
+    if (shipStatus === "delivered")         return { label: "Entregado",     color: "bg-success/40 text-success" };
+  }
+  return STATUS_INFO[order.status] ?? { label: order.status, color: "bg-rose-pastel" };
+}
+
 const TABS = [
   { key: "all",              label: "Todas" },
   { key: "pending_approval", label: "🔔 Aprobar pago" },
@@ -36,9 +49,10 @@ export default async function AdminOrders({
 
   // Disambiguación: orders tiene 2 FKs a profiles (user_id + payment_approved_by).
   // Especificamos !user_id para que PostgREST sepa cuál embeddear.
+  // Embeddemos también shipments para mostrar badges contextuales.
   let query = supabase
     .from("orders")
-    .select("*, profiles!user_id(first_name, last_name, full_name, email)")
+    .select("*, profiles!user_id(first_name, last_name, full_name, email), shipments(status)")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -130,9 +144,14 @@ export default async function AdminOrders({
                     )}
                   </td>
                   <td className="p-3">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full whitespace-nowrap ${STATUS_INFO[o.status]?.color ?? "bg-rose-pastel"}`}>
-                      {STATUS_INFO[o.status]?.label ?? o.status}
-                    </span>
+                    {(() => {
+                      const display = getOrderDisplayStatus(o);
+                      return (
+                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full whitespace-nowrap ${display.color}`}>
+                          {display.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="p-3 text-ink-soft text-xs">
                     {new Date(o.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}

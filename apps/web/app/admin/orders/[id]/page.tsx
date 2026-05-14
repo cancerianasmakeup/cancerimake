@@ -10,13 +10,14 @@ import {
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
-import { useConfirm } from "@/components/ConfirmDialog";
+import { useConfirm, usePrompt } from "@/components/ConfirmDialog";
 import { getOrderStatusLabel } from "@/lib/order-status";
 
 export default function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createSupabaseBrowser();
   const router = useRouter();
   const confirm = useConfirm();
+  const prompt = usePrompt();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +112,59 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {
       toast.error("No se pudo aprobar: " + (e?.message ?? "error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Pide número de seguimiento (obligatorio), lo guarda en el shipment
+   *  vinculado y mueve la orden a 'shipped'. Si no hay shipment, sólo actualiza
+   *  la orden (caso legacy). */
+  async function markAsShipped() {
+    if (!orderId) return;
+    const result = await prompt({
+      title: "Marcar orden como enviada",
+      description: "Cargá el número de seguimiento para que la clienta pueda rastrear su paquete.",
+      tone: "info",
+      confirmLabel: "Marcar como enviada",
+      fields: [
+        { name: "tracking_number", label: "Número de seguimiento", placeholder: "Ej: CA123456789AR", required: true },
+        { name: "tracking_provider", label: "Carrier / proveedor", placeholder: "Correo Argentino", defaultValue: "Correo Argentino" },
+        { name: "tracking_url", label: "URL de tracking (opcional)", placeholder: "https://www.correoargentino.com.ar/...", type: "url" },
+      ],
+    });
+    if (!result) return;
+
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      // Si la orden tiene shipment vinculado, guardamos el tracking ahí
+      const { data: shipment } = await supabase
+        .from("shipments")
+        .select("id")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      if (shipment) {
+        await supabase.from("shipments").update({
+          status: "dispatched",
+          dispatched_at: now,
+          tracking_number: result.tracking_number.trim(),
+          tracking_provider: (result.tracking_provider || "").trim() || null,
+          tracking_url: (result.tracking_url || "").trim() || null,
+        }).eq("id", shipment.id);
+      }
+      // Y la orden a 'shipped'
+      const { error } = await supabase.from("orders").update({
+        status: "shipped",
+        shipped_at: now,
+      }).eq("id", orderId);
+      if (error) throw error;
+      toast.success("Orden marcada como enviada 🌸");
+      await reload();
+      router.refresh();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e: any) {
+      toast.error("No se pudo marcar como enviada: " + (e?.message ?? "error"));
     } finally {
       setBusy(false);
     }
@@ -290,7 +344,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
                 </button>
               )}
               {(order.status === "preparing" || order.status === "paid") && (
-                <button onClick={() => updateStatus("shipped", { shipped_at: new Date().toISOString() })} disabled={busy} className="btn-secondary w-full justify-start disabled:opacity-50">
+                <button onClick={markAsShipped} disabled={busy} className="btn-secondary w-full justify-start disabled:opacity-50">
                   <Truck className="w-4 h-4" /> Marcar como enviada
                 </button>
               )}
