@@ -58,6 +58,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     toast.success("Estado actualizado");
     await reload();
     router.refresh();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /** Aprueba el pago de la orden y, si la clienta pidió envío, crea un shipment
@@ -104,6 +105,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
 
       await reload();
       router.refresh();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {
       toast.error("No se pudo aprobar: " + (e?.message ?? "error"));
     } finally {

@@ -108,6 +108,7 @@ export default function PaymentProofUploader({
 
       toast.success("Comprobante recibido 🌸");
       setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       onSubmitted?.();
     } catch (err: any) {
       toast.error("No se pudo subir: " + (err?.message ?? "error"));
@@ -144,6 +145,7 @@ export default function PaymentProofUploader({
 
       toast.success("Marcaste que mandás por WhatsApp. Esperamos tu mensaje 🌸");
       setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       onSubmitted?.();
     } catch (err: any) {
       toast.error("No se pudo guardar: " + (err?.message ?? "error"));

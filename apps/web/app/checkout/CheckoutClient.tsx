@@ -142,6 +142,9 @@ export default function CheckoutClient() {
           cbu: paymentMethods.transfer_cbu ?? "",
           holder: paymentMethods.transfer_holder ?? "",
         });
+        // Llevar al usuario al tope para que vea la pantalla de confirmación
+        // (sino queda parado donde estaba el botón de Confirmar).
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         // Mercado Pago
         const { data: { session } } = await supabase.auth.getSession();

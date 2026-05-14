@@ -111,6 +111,7 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
     if (error) { toast.error(error.message); return; }
     toast.success("Pago del envío aprobado 🌸");
     load();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /** Admin marca el envío como despachado, guardando tracking number genérico. */
@@ -131,6 +132,7 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
     if (error) { toast.error(error.message); return; }
     toast.success("Marcaste el envío como despachado 🌸");
     load();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   useEffect(() => {
