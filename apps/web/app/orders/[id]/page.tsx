@@ -1,11 +1,23 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { CheckCircle2, Clock, X, Banknote, Copy } from "lucide-react";
+import { CheckCircle2, Clock, X } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { getBrandInfo } from "@/lib/site-settings";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { formatPrice } from "@cancerianas/shared";
 import TransferInstructions from "@/components/TransferInstructions";
+import PaymentProofUploader from "@/components/PaymentProofUploader";
+
+const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }> = {
+  pending:           { label: "Esperando pago",        bg: "bg-warning/15",  text: "text-warning" },
+  pending_approval:  { label: "En aprobación",         bg: "bg-rose-deep/15", text: "text-rose-deep" },
+  paid:              { label: "Pago confirmado",       bg: "bg-success/15",  text: "text-success" },
+  preparing:         { label: "En preparación",        bg: "bg-rose-pastel", text: "text-rose-deep" },
+  shipped:           { label: "Enviado",               bg: "bg-success/20",  text: "text-success" },
+  delivered:         { label: "Entregado",             bg: "bg-success/30",  text: "text-success" },
+  cancelled:         { label: "Cancelada",             bg: "bg-error/15",    text: "text-error" },
+};
 
 export default async function OrderDetailPage({
   params,
@@ -20,16 +32,20 @@ export default async function OrderDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const [{ data: order }, { data: pmRow }] = await Promise.all([
+  const [{ data: order }, { data: pmRow }, brand] = await Promise.all([
     supabase.from("orders").select("*, order_items(*)").eq("id", id).eq("user_id", user.id).single(),
     supabase.from("site_settings").select("value").eq("key", "payment_methods").maybeSingle(),
+    getBrandInfo(),
   ]);
 
   if (!order) notFound();
 
   const pm = pmRow?.value ?? {};
-  const isTransferPending = order.payment_method === "transfer" && order.status === "pending" && !order.paid_at;
-  const isTransferPaid = order.payment_method === "transfer" && (order.status === "paid" || !!order.paid_at);
+  const isTransfer = order.payment_method === "transfer";
+  const isTransferPending = isTransfer && order.status === "pending" && !order.paid_at;
+  const isTransferPendingApproval = isTransfer && order.status === "pending_approval";
+  const isPaid = order.status === "paid" || !!order.paid_at;
+  const statusCfg = STATUS_LABELS[order.status] ?? { label: order.status, bg: "bg-rose-pastel", text: "text-rose-deep" };
 
   return (
     <>
@@ -59,7 +75,7 @@ export default async function OrderDetailPage({
         )}
 
         {/* ── Instrucciones de transferencia ──────────── */}
-        {isTransferPending && (
+        {(isTransferPending || isTransferPendingApproval) && (
           <TransferInstructions
             orderNumber={order.order_number}
             total={order.total}
@@ -70,7 +86,23 @@ export default async function OrderDetailPage({
           />
         )}
 
-        {isTransferPaid && (
+        {/* ── Subir comprobante / Marcar enviado por WhatsApp ──── */}
+        {isTransfer && (order.status === "pending" || order.status === "pending_approval") && (
+          <PaymentProofUploader
+            entityType="order"
+            entityId={order.id}
+            userId={user.id}
+            reference={order.order_number}
+            amount={Number(order.total)}
+            whatsappNumber={brand.whatsapp}
+            label="la orden"
+            existingProofUrl={order.payment_proof_url}
+            existingViaWhatsapp={order.payment_proof_via_whatsapp}
+            currentStatus={order.status}
+          />
+        )}
+
+        {isPaid && (
           <div className="card bg-success/20 text-center py-6">
             <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-2" />
             <p className="font-display text-2xl text-ink-primary">¡Pago confirmado! 🌸</p>
@@ -86,12 +118,21 @@ export default async function OrderDetailPage({
               <p className="font-mono font-bold text-lg">{order.order_number}</p>
             </div>
             <div className="text-right">
-              <span className="text-xs font-bold uppercase px-3 py-1 rounded-full bg-rose-pastel text-rose-deep">{order.status}</span>
+              <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
+                {statusCfg.label}
+              </span>
               {order.payment_method && (
                 <p className="text-xs text-ink-soft mt-1">{order.payment_method === "transfer" ? "Transferencia" : "Mercado Pago"}</p>
               )}
             </div>
           </div>
+
+          {order.wants_shipping !== false && order.destination_type_requested && (
+            <div className="bg-rose-whisper/50 rounded-xl p-3 mb-4 text-sm">
+              <strong className="text-ink-primary">Modalidad de entrega:</strong>{" "}
+              {order.destination_type_requested === "domicilio" ? "Envío a domicilio" : "Retiro en sucursal de correo"}
+            </div>
+          )}
 
           <h2 className="font-display text-lg mt-6 mb-3">Productos</h2>
           <div className="space-y-3">

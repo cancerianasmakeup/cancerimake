@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, CheckCircle2 } from "lucide-react";
+import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, Home, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, calcPackageFromCart, describePackage, isValidEmail, isValidPhoneAR } from "@cancerianas/shared";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import TransferInstructions from "@/components/TransferInstructions";
+import PaymentProofUploader from "@/components/PaymentProofUploader";
 
 export default function CheckoutClient() {
   const supabase = createSupabaseBrowser();
@@ -20,9 +22,15 @@ export default function CheckoutClient() {
   const [contact, setContact] = useState({ full_name: "", email: "", phone: "" });
   const [paymentMethods, setPaymentMethods] = useState<any>({});
   const [shippingExtras, setShippingExtras] = useState<any>({});
+  const [brand, setBrand] = useState<{ whatsapp?: string }>({});
   const [selectedMethod, setSelectedMethod] = useState<"transfer" | "mercadopago" | null>(null);
-  // Orden creada tras confirmar transferencia
-  const [confirmedOrder, setConfirmedOrder] = useState<{ order_number: string; alias: string; bank: string; cbu: string; holder: string } | null>(null);
+  // Modalidad de entrega: domicilio o sucursal (el detalle se completa después en /shipment).
+  const [destinationType, setDestinationType] = useState<"domicilio" | "sucursal">("domicilio");
+  // Orden creada tras confirmar transferencia — guardamos id + datos para mostrar TransferInstructions + uploader.
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    id: string; order_number: string; total: number;
+    alias: string; bank: string; cbu: string; holder: string;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -33,7 +41,7 @@ export default function CheckoutClient() {
       const [{ data: prof }, { data: cart }, { data: settingsRows }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("carts").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
-        supabase.from("site_settings").select("key, value").in("key", ["payment_methods", "shipping_extras"]),
+        supabase.from("site_settings").select("key, value").in("key", ["payment_methods", "shipping_extras", "brand_info"]),
       ]);
 
       setProfile(prof);
@@ -43,8 +51,10 @@ export default function CheckoutClient() {
       (settingsRows ?? []).forEach((r: any) => { settingsMap[r.key] = r.value; });
       const pm = settingsMap.payment_methods ?? {};
       const ex = settingsMap.shipping_extras ?? {};
+      const br = settingsMap.brand_info ?? {};
       setPaymentMethods(pm);
       setShippingExtras(ex);
+      setBrand(br);
       // Preseleccionar el único método habilitado si hay uno solo
       const available = [pm.transfer_enabled && "transfer", pm.mercadopago_enabled && "mercadopago"].filter(Boolean) as ("transfer" | "mercadopago")[];
       if (available.length === 1) setSelectedMethod(available[0]);
@@ -100,6 +110,8 @@ export default function CheckoutClient() {
           total: subtotal,
           payment_method: method,
           shipping_address: { full_name: contact.full_name, email: contact.email, phone: contact.phone },
+          wants_shipping: true,
+          destination_type_requested: destinationType,
         })
         .select()
         .single();
@@ -122,7 +134,9 @@ export default function CheckoutClient() {
 
       if (method === "transfer") {
         setConfirmedOrder({
+          id: order.id,
           order_number: order.order_number,
+          total: Number(order.total),
           alias: paymentMethods.transfer_alias ?? "",
           bank: paymentMethods.transfer_bank ?? "",
           cbu: paymentMethods.transfer_cbu ?? "",
@@ -160,45 +174,32 @@ export default function CheckoutClient() {
     return (
       <>
         <Header />
-        <section className="max-w-2xl mx-auto px-4 py-16">
-          <div className="card text-center space-y-6">
-            <CheckCircle2 className="w-16 h-16 text-success mx-auto" />
-            <div>
-              <h1 className="font-display text-3xl text-ink-primary mb-2">¡Orden confirmada! 🌸</h1>
-              <p className="text-ink-secondary">Ahora realizá la transferencia y tu pedido se prepara enseguida.</p>
-            </div>
+        <section className="max-w-2xl mx-auto px-4 py-10 space-y-4">
+          <TransferInstructions
+            orderNumber={confirmedOrder.order_number}
+            total={confirmedOrder.total}
+            alias={confirmedOrder.alias}
+            cbu={confirmedOrder.cbu}
+            bank={confirmedOrder.bank}
+            holder={confirmedOrder.holder}
+          />
 
-            <div className="bg-rose-whisper rounded-2xl p-5 text-left space-y-3">
-              <div className="flex justify-between items-center pb-3 border-b border-rose-pastel">
-                <span className="text-sm text-ink-soft">Número de orden</span>
-                <span className="font-mono font-bold text-ink-primary text-lg">{confirmedOrder.order_number}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-ink-soft">Total a transferir</span>
-                <span className="font-bold text-rose-deep text-xl">{formatPrice(subtotal)}</span>
-              </div>
-            </div>
+          {user && (
+            <PaymentProofUploader
+              entityType="order"
+              entityId={confirmedOrder.id}
+              userId={user.id}
+              reference={confirmedOrder.order_number}
+              amount={confirmedOrder.total}
+              whatsappNumber={brand.whatsapp}
+              label="la orden"
+              currentStatus="pending"
+            />
+          )}
 
-            <div className="bg-white border-2 border-rose-pastel rounded-2xl p-5 text-left space-y-3">
-              <h3 className="font-display text-lg text-ink-primary">Datos bancarios</h3>
-              {confirmedOrder.holder && <Row label="Titular" value={confirmedOrder.holder} />}
-              {confirmedOrder.alias && <Row label="Alias" value={confirmedOrder.alias} copy />}
-              {confirmedOrder.cbu && <Row label="CBU" value={confirmedOrder.cbu} copy />}
-              {confirmedOrder.bank && <Row label="Banco" value={confirmedOrder.bank} />}
-            </div>
-
-            <div className="bg-rose-deep/10 rounded-2xl p-4 text-sm text-ink-primary text-left space-y-1">
-              <p className="font-bold">📝 Importante: en el asunto/descripción de la transferencia escribí:</p>
-              <p className="font-mono text-rose-deep font-bold text-base text-center py-1">ORDEN {confirmedOrder.order_number}</p>
-              <p className="text-ink-soft text-xs">Así identificamos tu pago automáticamente y procesamos tu pedido más rápido.</p>
-            </div>
-
-            <p className="text-sm text-ink-secondary">Una vez que confirmemos el pago, te avisamos por email para que elijas el método de envío.</p>
-
-            <a href={`/orders`} className="btn-primary w-full flex items-center justify-center gap-2">
-              Ver mis órdenes
-            </a>
-          </div>
+          <a href={`/orders/${confirmedOrder.id}`} className="btn-secondary w-full flex items-center justify-center gap-2">
+            Ver detalle de mi orden
+          </a>
         </section>
         <Footer />
       </>
@@ -255,6 +256,34 @@ export default function CheckoutClient() {
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
                     <input className="input pl-11" type="tel" placeholder="WhatsApp (opcional)" autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
                   </div>
+                </div>
+              </div>
+
+              {/* Modalidad de entrega */}
+              <div className="card space-y-3">
+                <h2 className="font-display text-xl">¿Cómo querés recibirlo?</h2>
+                <p className="text-xs text-ink-soft -mt-2">Después de confirmar el pago te pedimos la dirección o la sucursal exacta.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${destinationType === "domicilio" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                    <input type="radio" name="destination" className="mt-1 accent-rose-deep" checked={destinationType === "domicilio"} onChange={() => setDestinationType("domicilio")} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5 text-rose-deep" />
+                        <span className="font-semibold text-ink-primary">Envío a domicilio</span>
+                      </div>
+                      <p className="text-xs text-ink-soft mt-1">Te lo llevan hasta la puerta de tu casa.</p>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${destinationType === "sucursal" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                    <input type="radio" name="destination" className="mt-1 accent-rose-deep" checked={destinationType === "sucursal"} onChange={() => setDestinationType("sucursal")} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-rose-deep" />
+                        <span className="font-semibold text-ink-primary">Retiro en sucursal</span>
+                      </div>
+                      <p className="text-xs text-ink-soft mt-1">Lo retirás en una sucursal cercana de correo (suele salir más barato).</p>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -371,21 +400,3 @@ export default function CheckoutClient() {
   );
 }
 
-function Row({ label, value, copy }: { label: string; value: string; copy?: boolean }) {
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-ink-soft">{label}</span>
-      <div className="flex items-center gap-2">
-        <span className="font-mono font-semibold text-ink-primary">{value}</span>
-        {copy && (
-          <button
-            onClick={() => { navigator.clipboard.writeText(value); toast.success("Copiado"); }}
-            className="text-xs text-rose-deep hover:underline"
-          >
-            Copiar
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
