@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { CheckCircle2, Clock, X } from "lucide-react";
+import { CheckCircle2, Clock, X, Truck, ArrowRight, Package } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { getBrandInfo } from "@/lib/site-settings";
 import Header from "@/components/Header";
@@ -31,6 +31,14 @@ export default async function OrderDetailPage({
 
   if (!order) notFound();
 
+  // Shipment vinculado (si admin ya aprobó el pago y creó el envío)
+  const { data: shipment } = await supabase
+    .from("shipments")
+    .select("id, status, destination_type, cost_charged, tracking_number, tracking_url")
+    .eq("order_id", order.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const pm = pmRow?.value ?? {};
   const isTransfer = order.payment_method === "transfer";
   const isTransferPending = isTransfer && order.status === "pending" && !order.paid_at;
@@ -42,6 +50,68 @@ export default async function OrderDetailPage({
     <>
       <Header />
       <section className="max-w-2xl mx-auto px-4 py-10 space-y-4">
+        {/* ── Banner CTA del envío (cuando hay shipment vinculado) ────── */}
+        {shipment && shipment.status === "pending_address" && (
+          <Link
+            href={`/shipment/${shipment.id}`}
+            className="block rounded-3xl bg-gradient-to-r from-rose-deep to-rose-primary text-white p-5 shadow-lift hover:scale-[1.01] transition-transform"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-lg font-bold leading-tight">Tenés un envío esperando 📦</p>
+                <p className="text-sm text-white/85">Completá tus datos para que te lo mandemos</p>
+              </div>
+              <ArrowRight className="w-5 h-5 flex-shrink-0" />
+            </div>
+          </Link>
+        )}
+        {shipment && (shipment.status === "pending_custom_quote" || shipment.status === "pending_quote") && (
+          <div className="rounded-3xl bg-rose-whisper border-2 border-rose-pastel p-5">
+            <div className="flex items-center gap-4">
+              <Clock className="w-6 h-6 text-rose-deep flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-display font-bold text-ink-primary">Cotizando tu envío 💗</p>
+                <p className="text-sm text-ink-secondary">Estamos calculando cuánto sale tu envío. Te avisamos por WhatsApp ni bien lo tengamos.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {shipment && shipment.status === "pending_payment" && (
+          <Link
+            href={`/shipment/${shipment.id}`}
+            className="block rounded-3xl bg-gradient-to-r from-warning to-rose-deep text-white p-5 shadow-lift hover:scale-[1.01] transition-transform"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Package className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-lg font-bold leading-tight">Pagá tu envío 💸</p>
+                <p className="text-sm text-white/85">Ya cotizamos: ${Number(shipment.cost_charged ?? 0).toLocaleString("es-AR")}. Click acá para pagarlo.</p>
+              </div>
+              <ArrowRight className="w-5 h-5 flex-shrink-0" />
+            </div>
+          </Link>
+        )}
+        {shipment && shipment.tracking_number && (
+          <Link
+            href={`/shipment/${shipment.id}`}
+            className="block rounded-3xl bg-success/15 border-2 border-success/40 p-5 hover:bg-success/20 transition"
+          >
+            <div className="flex items-center gap-4">
+              <Truck className="w-6 h-6 text-success flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-display font-bold text-ink-primary">Tu paquete está en camino 📦</p>
+                <p className="text-sm text-ink-secondary">Seguimiento: <span className="font-mono">{shipment.tracking_number}</span></p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-success" />
+            </div>
+          </Link>
+        )}
+
         {/* ── Banners de estado MP ─────────────────────── */}
         {mpStatus === "success" && (
           <div className="card bg-success/20 text-center py-6">

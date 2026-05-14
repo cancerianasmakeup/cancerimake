@@ -130,8 +130,18 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
       telefono: prev.telefono || p?.phone || "",
     }));
 
-    // Status-driven step
-    if (s.status === "pending_address") setStep("carrier");
+    // Status-driven step. Si el carrier ya está marcado como 'personalizado'
+    // (el caso cuando admin aprobó la orden y creó el shipment manual), saltamos
+    // la pantalla de "elegí carrier" e ir directo al form simple.
+    if (s.status === "pending_address") {
+      if (s.carrier === "personalizado") {
+        // Inicializar el tipo de destino que ya eligió en checkout
+        if (s.destination_type) setDestinationType(s.destination_type);
+        setStep("custom-request");
+      } else {
+        setStep("carrier");
+      }
+    }
     else if (s.status === "pending_custom_quote" || s.status === "pending_quote") setStep("custom-waiting");
     else if (s.status === "pending_payment" || s.status === "pending_approval") setStep("confirm");
     else if (s.status === "paid" || s.status === "label_generated" || ["dispatched", "in_transit", "out_for_delivery", "delivered"].includes(s.status)) setStep("done");
@@ -262,26 +272,41 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
 
   async function requestCustomQuote() {
     if (!shipment) return;
+    // Validación común
     if (!address.nombre_completo.trim()) return toast.error("Falta nombre completo");
     if (!address.documento.trim()) return toast.error("Falta DNI");
-    if (!address.telefono.trim()) return toast.error("Falta teléfono");
+    if (!address.telefono.trim()) return toast.error("Falta teléfono / WhatsApp");
     if (address.codigoPostal.length !== 4) return toast.error("CP inválido (4 dígitos)");
-    if (!address.calle.trim() || !address.numero.trim()) return toast.error("Falta calle/número");
-    if (!address.localidad.trim()) return toast.error("Falta localidad");
+
+    // Validación específica
+    if (destinationType === "domicilio") {
+      if (!address.calle.trim() || !address.numero.trim()) return toast.error("Falta calle/número");
+      if (!address.localidad.trim()) return toast.error("Falta localidad");
+    } else if (destinationType === "sucursal") {
+      if (!address.localidad.trim()) return toast.error("Falta tu localidad — así te recomendamos la sucursal más cerca");
+    }
 
     setBusy(true);
-    const { error } = await supabase.rpc("customer_request_custom_quote", {
-      p_shipment_id: shipmentId,
-      p_destination_address: address,
-      p_message: customMessage || null,
-    });
+    // Hacemos update directo (no RPC) para incluir destination_type y branch si aplica.
+    // RLS permite update mientras status sea pending_address (USING se evalúa antes del cambio).
+    const { error } = await supabase
+      .from("shipments")
+      .update({
+        status: "pending_custom_quote",
+        carrier: "personalizado",
+        destination_type: destinationType,
+        destination_address: address,
+        custom_quote_message: customMessage || null,
+      })
+      .eq("id", shipmentId);
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Listo, te avisamos cuando tengas la cotización 🌸");
+    toast.success("Listo, te avisamos cuando tengamos el precio del envío 🌸");
     setStep("custom-waiting");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function payNow() {
@@ -555,19 +580,39 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
 
       {step === "custom-request" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => setStep("carrier")} className="text-rose-deep">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h2 className="font-display text-2xl text-ink-primary">Envío personalizado 🤝</h2>
+          <div className="mb-2">
+            <h2 className="font-display text-2xl text-ink-primary">
+              {destinationType === "sucursal" ? "Tus datos para retirar 📍" : "¿A dónde te lo mandamos? 🏠"}
+            </h2>
+            <p className="text-sm text-ink-soft mt-1">
+              Completá tus datos. Cuando los recibamos te avisamos cuánto sale tu envío para que lo pagues.
+            </p>
           </div>
 
-          <div className="card bg-rose-pastel/40 text-sm leading-relaxed">
-            <p className="text-ink-secondary">
-              Cargá tu dirección y dejá un mensaje (opcional). Voy a coordinar con vos por
-              WhatsApp el medio (motoboy, retiro, encomienda especial...) y te paso el precio
-              acá mismo. <strong>Cuando estés conforme, pagás desde este link.</strong>
-            </p>
+          {/* Toggle para cambiar domicilio/sucursal sobre la marcha */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDestinationType("domicilio")}
+              className={`p-3 rounded-2xl border-2 text-sm font-semibold transition ${
+                destinationType === "domicilio"
+                  ? "border-rose-deep bg-rose-whisper text-rose-deep"
+                  : "border-rose-pastel text-ink-soft hover:border-rose-medium/50"
+              }`}
+            >
+              <Home className="w-4 h-4 inline mr-1" /> Envío a domicilio
+            </button>
+            <button
+              type="button"
+              onClick={() => setDestinationType("sucursal")}
+              className={`p-3 rounded-2xl border-2 text-sm font-semibold transition ${
+                destinationType === "sucursal"
+                  ? "border-rose-deep bg-rose-whisper text-rose-deep"
+                  : "border-rose-pastel text-ink-soft hover:border-rose-medium/50"
+              }`}
+            >
+              <MapPin className="w-4 h-4 inline mr-1" /> Retiro en sucursal
+            </button>
           </div>
 
           <Field label="Nombre completo *" value={address.nombre_completo} onChange={(v) => setAddress({ ...address, nombre_completo: v })} placeholder="Como figura en el DNI" />
@@ -575,14 +620,10 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
             <Field label="DNI *" value={address.documento} onChange={(v) => setAddress({ ...address, documento: v.replace(/\D/g, "") })} placeholder="40123456" />
             <Field label="WhatsApp *" value={address.telefono} onChange={(v) => setAddress({ ...address, telefono: v })} placeholder="+5491141..." />
           </div>
-          <Field label="CP *" value={address.codigoPostal} onChange={(v) => setAddress({ ...address, codigoPostal: v.replace(/\D/g, "").slice(0, 4) })} placeholder="1414" />
-          <Field label="Calle *" value={address.calle} onChange={(v) => setAddress({ ...address, calle: v })} placeholder="Av. Corrientes" />
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Número *" value={address.numero} onChange={(v) => setAddress({ ...address, numero: v })} placeholder="1234" />
-            <Field label="Piso" value={address.piso} onChange={(v) => setAddress({ ...address, piso: v })} placeholder="3" />
-            <Field label="Depto" value={address.depto} onChange={(v) => setAddress({ ...address, depto: v })} placeholder="B" />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="CP *" value={address.codigoPostal} onChange={(v) => setAddress({ ...address, codigoPostal: v.replace(/\D/g, "").slice(0, 4) })} placeholder="1414" />
+            <Field label="Localidad *" value={address.localidad} onChange={(v) => setAddress({ ...address, localidad: v })} placeholder="CABA" />
           </div>
-          <Field label="Localidad *" value={address.localidad} onChange={(v) => setAddress({ ...address, localidad: v })} placeholder="CABA" />
           <div>
             <label className="block text-sm font-semibold text-ink-secondary mb-1.5">Provincia *</label>
             <select
@@ -594,6 +635,27 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
             </select>
           </div>
 
+          {destinationType === "domicilio" && (
+            <>
+              <Field label="Calle *" value={address.calle} onChange={(v) => setAddress({ ...address, calle: v })} placeholder="Av. Corrientes" />
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Número *" value={address.numero} onChange={(v) => setAddress({ ...address, numero: v })} placeholder="1234" />
+                <Field label="Piso" value={address.piso} onChange={(v) => setAddress({ ...address, piso: v })} placeholder="3" />
+                <Field label="Depto" value={address.depto} onChange={(v) => setAddress({ ...address, depto: v })} placeholder="B" />
+              </div>
+              <Field label="Referencias (opcional)" value={address.referencias} onChange={(v) => setAddress({ ...address, referencias: v })} placeholder="Casa con portón verde, timbre 'Cancerianas'" />
+            </>
+          )}
+
+          {destinationType === "sucursal" && (
+            <div className="card bg-rose-whisper/60 text-sm">
+              <p className="text-ink-secondary">
+                📍 Coordinamos por WhatsApp en qué sucursal de tu zona te conviene retirar el paquete.
+                Si tenés alguna preferencia, escribíla abajo.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-semibold text-ink-secondary mb-1.5">
               Mensaje para la marca (opcional)
@@ -603,13 +665,17 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
               className="input"
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder="Ej: Soy de Mendoza centro, ¿podés mandar por encomienda especial? O lo retiro yo si te queda mejor."
+              placeholder={
+                destinationType === "sucursal"
+                  ? "Ej: Prefiero retirar en la sucursal de Av. Mosconi. Cualquier cosa, me decís."
+                  : "Ej: Tocá timbre 'A', soy de Mendoza centro, etc."
+              }
             />
           </div>
 
           <button onClick={requestCustomQuote} disabled={busy} className="btn-primary w-full">
             <HandCoins className="w-5 h-5" />
-            {busy ? "Enviando..." : "Solicitar cotización personalizada"}
+            {busy ? "Enviando..." : "Enviar mis datos"}
           </button>
         </div>
       )}
