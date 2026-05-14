@@ -8,16 +8,7 @@ import Footer from "@/components/Footer";
 import { formatPrice } from "@cancerianas/shared";
 import TransferInstructions from "@/components/TransferInstructions";
 import PaymentProofUploader from "@/components/PaymentProofUploader";
-
-const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }> = {
-  pending:           { label: "Esperando pago",        bg: "bg-warning/15",  text: "text-warning" },
-  pending_approval:  { label: "En aprobación",         bg: "bg-rose-deep/15", text: "text-rose-deep" },
-  paid:              { label: "Pago confirmado",       bg: "bg-success/15",  text: "text-success" },
-  preparing:         { label: "En preparación",        bg: "bg-rose-pastel", text: "text-rose-deep" },
-  shipped:           { label: "Enviado",               bg: "bg-success/20",  text: "text-success" },
-  delivered:         { label: "Entregado",             bg: "bg-success/30",  text: "text-success" },
-  cancelled:         { label: "Cancelada",             bg: "bg-error/15",    text: "text-error" },
-};
+import { getOrderStatusLabel } from "@/lib/order-status";
 
 export default async function OrderDetailPage({
   params,
@@ -45,7 +36,7 @@ export default async function OrderDetailPage({
   const isTransferPending = isTransfer && order.status === "pending" && !order.paid_at;
   const isTransferPendingApproval = isTransfer && order.status === "pending_approval";
   const isPaid = order.status === "paid" || !!order.paid_at;
-  const statusCfg = STATUS_LABELS[order.status] ?? { label: order.status, bg: "bg-rose-pastel", text: "text-rose-deep" };
+  const statusCfg = getOrderStatusLabel(order.status);
 
   return (
     <>
@@ -118,7 +109,7 @@ export default async function OrderDetailPage({
               <p className="font-mono font-bold text-lg">{order.order_number}</p>
             </div>
             <div className="text-right">
-              <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
+              <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full ${statusCfg.badge}`}>
                 {statusCfg.label}
               </span>
               {order.payment_method && (
