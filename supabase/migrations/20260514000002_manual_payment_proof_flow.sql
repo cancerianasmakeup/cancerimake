@@ -9,22 +9,33 @@
 -- Mismo patrón para el envío: el cliente paga el envío después de
 -- llenar el formulario, sube el comprobante, admin aprueba, admin
 -- marca como ENVIADO con número de seguimiento.
+--
+-- ⚠️  IMPORTANTE — APLICAR EN 2 RUNS DEL SQL EDITOR
+--
+-- Postgres no permite usar un valor de enum recién agregado (ALTER TYPE
+-- ADD VALUE) dentro de la misma transacción donde se agregó. El SQL
+-- Editor del Dashboard mete todo en una transacción, así que pegándolo
+-- todo de una vez da: 55P04 "unsafe use of new value...".
+--
+-- Hacelo así:
+--   1) Ejecutá SOLO el bloque "STEP 1" (los ALTER TYPE).
+--   2) Después ejecutá el resto del archivo (STEP 2 en adelante).
+--
+-- Con `supabase db push` (CLI) no hay problema — cada migration corre
+-- en su propia transacción.
 -- ============================================================
 
--- ---------- ENUM: order_status: agregar pending_approval --------
-DO $$ BEGIN
-  ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'pending_approval' BEFORE 'paid';
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- ============================================================
+-- STEP 1: ENUMS — ejecutar SOLO esto la primera vez
+-- ============================================================
+ALTER TYPE order_status    ADD VALUE IF NOT EXISTS 'pending_approval' BEFORE 'paid';
+ALTER TYPE shipment_status ADD VALUE IF NOT EXISTS 'pending_quote'    BEFORE 'pending_payment';
+ALTER TYPE shipment_status ADD VALUE IF NOT EXISTS 'pending_approval' BEFORE 'paid';
 
--- ---------- ENUM: shipment_status: agregar pending_quote + pending_approval --------
-DO $$ BEGIN
-  ALTER TYPE shipment_status ADD VALUE IF NOT EXISTS 'pending_quote'    BEFORE 'pending_payment';
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN
-  ALTER TYPE shipment_status ADD VALUE IF NOT EXISTS 'pending_approval' BEFORE 'paid';
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- ============================================================
+-- STEP 2: COLUMNAS + RLS + STORAGE — ejecutar en un 2º run
+-- ============================================================
 
--- ---------- ORDERS: payment proof fields ----------
 ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS payment_proof_url           TEXT,
   ADD COLUMN IF NOT EXISTS payment_proof_via_whatsapp  BOOLEAN NOT NULL DEFAULT false,
@@ -35,7 +46,6 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS wants_shipping              BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS destination_type_requested  shipment_destination_type;
 
--- ---------- SHIPMENTS: payment proof fields + tracking genérico ----------
 ALTER TABLE public.shipments
   ADD COLUMN IF NOT EXISTS payment_proof_url           TEXT,
   ADD COLUMN IF NOT EXISTS payment_proof_via_whatsapp  BOOLEAN NOT NULL DEFAULT false,
@@ -47,15 +57,12 @@ ALTER TABLE public.shipments
   ADD COLUMN IF NOT EXISTS tracking_provider           TEXT,
   ADD COLUMN IF NOT EXISTS tracking_url                TEXT;
 
--- Update RLS para permitir que el cliente actualice su orden para subir comprobante
--- mientras siga en estados previos a 'paid'.
 DROP POLICY IF EXISTS "users_update_own_order_proof" ON public.orders;
 CREATE POLICY "users_update_own_order_proof" ON public.orders
   FOR UPDATE
   USING (auth.uid() = user_id AND status IN ('pending', 'pending_approval'))
   WITH CHECK (auth.uid() = user_id);
 
--- Mismo para shipments cuando el cliente sube el comprobante de envío
 DROP POLICY IF EXISTS "users_update_own_shipment_proof" ON public.shipments;
 CREATE POLICY "users_update_own_shipment_proof" ON public.shipments
   FOR UPDATE
@@ -79,10 +86,7 @@ ON CONFLICT (id) DO UPDATE SET
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- RLS de objects: clientes suben a su propia carpeta, admins leen todo.
--- Estructura de path: <type>/<owner_user_id>/<id>/<filename>
--- Ej: orders/<user_id>/<order_id>/comprobante.jpg
---     shipments/<user_id>/<shipment_id>/comprobante.jpg
-
+-- Estructura: <type>/<owner_user_id>/<id>/<filename>
 DROP POLICY IF EXISTS "payment_proofs_users_insert_own" ON storage.objects;
 CREATE POLICY "payment_proofs_users_insert_own" ON storage.objects
   FOR INSERT TO authenticated
