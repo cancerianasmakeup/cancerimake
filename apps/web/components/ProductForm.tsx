@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import type { Category, Product } from "@cancerianas/shared";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type VariantDraft = {
   _key: string;
@@ -22,6 +23,7 @@ type VariantDraft = {
 
 export default function ProductForm({ productId }: { productId?: string }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -192,7 +194,13 @@ export default function ProductForm({ productId }: { productId?: string }) {
   async function deleteVariant(i: number) {
     const v = variants[i];
     if (v.id) {
-      if (!confirm(`¿Eliminar la variante "${v.name}"?`)) return;
+      const ok = await confirm({
+        title: `¿Eliminar la variante "${v.name}"?`,
+        description: "Esta acción no se puede deshacer.",
+        confirmLabel: "Sí, eliminar",
+        tone: "danger",
+      });
+      if (!ok) return;
       const { error } = await supabase.from("product_variants").delete().eq("id", v.id);
       if (error) { toast.error(error.message); return; }
     }
@@ -235,7 +243,14 @@ export default function ProductForm({ productId }: { productId?: string }) {
   }
 
   async function handleDelete() {
-    if (!productId || !confirm("¿Eliminar este producto?")) return;
+    if (!productId) return;
+    const ok = await confirm({
+      title: "¿Eliminar este producto?",
+      description: "El producto se archiva (no se borra definitivamente). Podés restaurarlo después.",
+      confirmLabel: "Sí, eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     await supabase.from("products").update({ status: "archived" }).eq("id", productId);
     toast.success("Producto archivado");
     router.push("/admin/products");

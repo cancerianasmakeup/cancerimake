@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
 import type { LivePurchase } from "@cancerianas/shared";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function LivePurchaseFlow({
   purchase,
@@ -15,6 +16,7 @@ export default function LivePurchaseFlow({
   onUpdate: () => void;
 }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -63,7 +65,14 @@ export default function LivePurchaseFlow({
   }
 
   async function cancel() {
-    if (!confirm("¿Querés salir de la fila?")) return;
+    const ok = await confirm({
+      title: "¿Querés salir de la fila?",
+      description: "Vas a perder tu lugar y se libera el stock para otra clienta.",
+      confirmLabel: "Sí, salir",
+      cancelLabel: "Quedarme",
+      tone: "warning",
+    });
+    if (!ok) return;
     await supabase
       .from("live_purchases")
       .update({ status: "cancelled" })

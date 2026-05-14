@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import type { Category } from "@cancerianas/shared";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const PRESET_EMOJIS = [
   "🌸", "🌺", "🌹", "🌷", "🌻", "🌼", "🪷", "🌿", "🍃", "🌱",
@@ -43,6 +44,7 @@ function slugify(s: string) {
 
 export default function CategoryForm({ categoryId }: { categoryId?: string }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -117,7 +119,13 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
 
   async function handleDelete() {
     if (!categoryId) return;
-    if (!confirm("¿Eliminar esta categoría? Los productos quedarán sin categoría.")) return;
+    const ok = await confirm({
+      title: "¿Eliminar esta categoría?",
+      description: "Los productos asociados quedarán sin categoría. Esta acción no se puede deshacer.",
+      confirmLabel: "Sí, eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     setDeleting(true);
     const { error } = await supabase.from("categories").delete().eq("id", categoryId);
     setDeleting(false);

@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const STATUS_META: Record<string, { label: string; color: string; emoji: string }> = {
   pending_address: { label: "Esperando dirección", color: "bg-warning/30 text-ink-primary", emoji: "📝" },
@@ -38,6 +39,7 @@ const STATUS_META: Record<string, { label: string; color: string; emoji: string 
 
 export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const [shipment, setShipment] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,7 +174,13 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   }
 
   async function generateLabel() {
-    if (!confirm("¿Generar la etiqueta de Andreani ahora? Esto crea la orden de envío real (o mock si no hay credenciales).")) return;
+    const ok = await confirm({
+      title: "¿Generar la etiqueta de Andreani ahora?",
+      description: "Esto crea la orden de envío real con el carrier (o mock si no hay credenciales).",
+      confirmLabel: "Sí, generar",
+      tone: "info",
+    });
+    if (!ok) return;
     const res = await callEdge("create-shipment", { shipment_id: shipmentId });
     const j = await res.json();
     if (!res.ok) toast.error(j.error || "Error");

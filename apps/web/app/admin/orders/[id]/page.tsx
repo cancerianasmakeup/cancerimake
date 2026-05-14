@@ -10,10 +10,12 @@ import {
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createSupabaseBrowser();
   const router = useRouter();
+  const confirm = useConfirm();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -113,22 +115,26 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     }
   }
 
-  /** Borra la orden + items + cancela shipments asociados.
-   *  RLS solo permite a admins; el ON DELETE CASCADE/SET NULL hace la limpieza. */
+  /** Borra la orden, devuelve el stock al producto/variante (si la orden estuvo
+   *  paga) y limpia shipments asociados. Todo en una RPC transaccional. */
   async function deleteOrder() {
-    if (!orderId) return;
-    const ok = window.confirm(
-      `¿Eliminar la orden ${order.order_number}? Esta acción no se puede deshacer.\n\nSe borran:\n• La orden y sus productos\n• El envío asociado (si existe)`
-    );
+    if (!orderId || !order) return;
+    const wasPaid = ["paid", "preparing", "shipped", "delivered"].includes(order.status);
+    const ok = await confirm({
+      title: `Eliminar la orden ${order.order_number}`,
+      description: wasPaid
+        ? `Se borra la orden, sus productos y el envío asociado.\nEl stock de cada producto vuelve al catálogo.\n\nEsta acción no se puede deshacer.`
+        : `Se borra la orden, sus productos y el envío asociado.\n\nEsta acción no se puede deshacer.`,
+      confirmLabel: "Sí, eliminar",
+      cancelLabel: "Cancelar",
+      tone: "danger",
+    });
     if (!ok) return;
     setBusy(true);
     try {
-      // Borrar primero el shipment vinculado si existe (no tiene CASCADE desde orders)
-      await supabase.from("shipments").delete().eq("order_id", orderId);
-      // Después la orden (order_items tiene CASCADE)
-      const { error } = await supabase.from("orders").delete().eq("id", orderId);
+      const { error } = await supabase.rpc("admin_delete_order_with_restock", { p_order_id: orderId });
       if (error) throw error;
-      toast.success("Orden eliminada");
+      toast.success(wasPaid ? "Orden eliminada y stock restaurado 🌸" : "Orden eliminada");
       router.push("/admin/orders");
     } catch (e: any) {
       toast.error("No se pudo eliminar: " + (e?.message ?? "error"));

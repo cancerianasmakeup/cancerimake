@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   Save,
   Plus,
@@ -378,15 +379,17 @@ function DropEditor({
   onRemove: () => void;
 }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const [notifying, setNotifying] = useState(false);
 
   async function notifySubscribers() {
-    if (
-      !window.confirm(
-        `¿Mandar el aviso de apertura de "${drop.label || "este drop"}" a las suscriptas que aún no recibieron notificación?`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `¿Mandar el aviso de apertura?`,
+      description: `Se notifica a las suscriptas de "${drop.label || "este drop"}" que aún no recibieron mensaje.`,
+      confirmLabel: "Sí, notificar",
+      tone: "info",
+    });
+    if (!ok) return;
     setNotifying(true);
     try {
       const { data, error } = await supabase.functions.invoke("notify-drop-open", {

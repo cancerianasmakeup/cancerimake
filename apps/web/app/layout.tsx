@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { BRAND } from "@/lib/brand";
 import { getBrandInfo, getSeo, getAnalytics } from "@/lib/site-settings";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import "../styles/globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cancerianas.com.ar";
@@ -110,8 +111,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="petal-bg">
-        {children}
-        <WhatsAppButton />
+        <ConfirmProvider>
+          {children}
+          <WhatsAppButton />
+        </ConfirmProvider>
         <Toaster
           position="top-center"
           toastOptions={{

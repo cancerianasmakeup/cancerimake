@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { formatPrice, offerAvailable } from "@cancerianas/shared";
 import type { LiveEvent, LiveOffer, LivePurchase, LivePurchaseStatus } from "@cancerianas/shared";
 
@@ -46,6 +47,7 @@ type Tab = "control" | "purchases" | "pending" | "notes";
 
 export default function AdminLiveControl({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createSupabaseBrowser();
+  const confirm = useConfirm();
   const [eventId, setEventId] = useState<string | null>(null);
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [offers, setOffers] = useState<LiveOffer[]>([]);
@@ -159,7 +161,13 @@ export default function AdminLiveControl({ params }: { params: Promise<{ id: str
 
   async function bulkSavePending() {
     if (!eventId) return;
-    if (!confirm("¿Guardar TODAS las compras expiradas/canceladas como pendientes? Las clientas serán notificadas en el próximo LIVE.")) return;
+    const ok = await confirm({
+      title: "¿Guardar TODAS las compras expiradas/canceladas como pendientes?",
+      description: "Las clientas afectadas serán notificadas para retomar la compra en el próximo LIVE.",
+      confirmLabel: "Sí, guardar todas",
+      tone: "warning",
+    });
+    if (!ok) return;
     const { data, error } = await supabase.rpc("bulk_save_event_pending", { p_event_id: eventId });
     if (error) toast.error(error.message);
     else toast.success(`${data ?? 0} compra(s) guardadas como pendientes`);
@@ -308,6 +316,7 @@ export default function AdminLiveControl({ params }: { params: Promise<{ id: str
 // CONTROL TAB
 // ============================================================
 function ControlTab({ event, offers, purchases, isActive, isFinished, changeStatus, toggleQueue, releaseSobre }: any) {
+  const confirm = useConfirm();
   return (
     <>
       <div className="card mb-6">
@@ -323,8 +332,14 @@ function ControlTab({ event, offers, purchases, isActive, isFinished, changeStat
                 <Pause className="w-4 h-4" /> Pausar
               </button>
               <button
-                onClick={() => {
-                  if (confirm("¿Finalizar el evento? Esta acción no se puede deshacer.")) changeStatus("finished");
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "¿Finalizar el evento?",
+                    description: "Una vez finalizado no se puede reabrir. Las compras quedan registradas como están.",
+                    confirmLabel: "Sí, finalizar",
+                    tone: "danger",
+                  });
+                  if (ok) changeStatus("finished");
                 }}
                 className="btn-secondary text-error"
               >
