@@ -117,9 +117,10 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     }
   }
 
-  /** Pide número de seguimiento (obligatorio), lo guarda en el shipment
-   *  vinculado y mueve la orden a 'shipped'. Si no hay shipment, sólo actualiza
-   *  la orden (caso legacy). */
+  /** Pide número de seguimiento (obligatorio) y lo guarda en el shipment
+   *  vinculado con status='dispatched'. El trigger sync_order_from_shipment
+   *  pone la orden en 'shipped' automáticamente. Si no hay shipment (caso
+   *  legacy), actualizamos sólo la orden. */
   async function markAsShipped() {
     if (!orderId) return;
     const result = await prompt({
@@ -138,33 +139,71 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     setBusy(true);
     try {
       const now = new Date().toISOString();
-      // Si la orden tiene shipment vinculado, guardamos el tracking ahí
       const { data: shipment } = await supabase
         .from("shipments")
         .select("id")
         .eq("order_id", orderId)
         .maybeSingle();
       if (shipment) {
-        await supabase.from("shipments").update({
+        // El trigger DB se encarga de mover la orden a 'shipped'
+        const { error } = await supabase.from("shipments").update({
           status: "dispatched",
           dispatched_at: now,
           tracking_number: result.tracking_number.trim(),
           tracking_provider: (result.tracking_provider || "").trim() || null,
           tracking_url: (result.tracking_url || "").trim() || null,
         }).eq("id", shipment.id);
+        if (error) throw error;
+      } else {
+        // Fallback legacy: orden sin shipment vinculado
+        const { error } = await supabase.from("orders").update({
+          status: "shipped",
+          shipped_at: now,
+        }).eq("id", orderId);
+        if (error) throw error;
       }
-      // Y la orden a 'shipped'
-      const { error } = await supabase.from("orders").update({
-        status: "shipped",
-        shipped_at: now,
-      }).eq("id", orderId);
-      if (error) throw error;
       toast.success("Orden marcada como enviada 🌸");
       await reload();
       router.refresh();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {
       toast.error("No se pudo marcar como enviada: " + (e?.message ?? "error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Marca como entregada. Actualiza el shipment vinculado primero (trigger
+   *  sincroniza la orden), o la orden directo si no hay shipment. */
+  async function markAsDelivered() {
+    if (!orderId) return;
+    setBusy(true);
+    try {
+      const now = new Date().toISOString();
+      const { data: shipment } = await supabase
+        .from("shipments")
+        .select("id")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      if (shipment) {
+        const { error } = await supabase.from("shipments").update({
+          status: "delivered",
+          delivered_at: now,
+        }).eq("id", shipment.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("orders").update({
+          status: "delivered",
+          delivered_at: now,
+        }).eq("id", orderId);
+        if (error) throw error;
+      }
+      toast.success("Orden marcada como entregada 🌸");
+      await reload();
+      router.refresh();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e: any) {
+      toast.error("No se pudo marcar como entregada: " + (e?.message ?? "error"));
     } finally {
       setBusy(false);
     }
@@ -349,7 +388,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
                 </button>
               )}
               {order.status === "shipped" && (
-                <button onClick={() => updateStatus("delivered", { delivered_at: new Date().toISOString() })} disabled={busy} className="btn-primary w-full justify-start disabled:opacity-50">
+                <button onClick={markAsDelivered} disabled={busy} className="btn-primary w-full justify-start disabled:opacity-50">
                   <CheckCircle2 className="w-4 h-4" /> Marcar como entregada
                 </button>
               )}
