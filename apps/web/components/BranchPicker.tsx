@@ -45,10 +45,10 @@ async function fetchNearbyBranches(lat: number, lng: number, radiusKm: number): 
       const elat = el.lat ?? el.center?.lat;
       const elng = el.lon ?? el.center?.lon;
       if (typeof elat !== "number" || typeof elng !== "number") return null;
-      const name = tags.name || tags["name:es"] || tags.operator || "Sucursal sin nombre";
+      const name = tags.name || tags["name:es"] || tags.operator || "Sucursal de correo";
       const street = [tags["addr:street"], tags["addr:housenumber"]].filter(Boolean).join(" ");
       const locality = [tags["addr:city"], tags["addr:state"]].filter(Boolean).join(", ");
-      const address = [street, locality].filter(Boolean).join(" · ") || "Dirección no informada";
+      const address = [street, locality].filter(Boolean).join(" · ");
       return {
         name,
         address,
@@ -62,6 +62,33 @@ async function fetchNearbyBranches(lat: number, lng: number, radiusKm: number): 
     .filter((x: PickedBranch | null): x is PickedBranch => !!x)
     .sort((a: PickedBranch, b: PickedBranch) => (a.distance_km ?? 0) - (b.distance_km ?? 0))
     .slice(0, 12);
+
+  // Para los que no traen address de Overpass, los pasamos por Photon
+  // (reverse geocoder gratis basado en OSM con buena cobertura de direcciones).
+  // Lo hacemos en paralelo con un timeout por las dudas — si Photon falla
+  // simplemente quedan sin address (no rompemos la lista).
+  const needsAddr = items.filter(b => !b.address);
+  if (needsAddr.length > 0) {
+    await Promise.all(
+      needsAddr.map(async (b) => {
+        try {
+          const photonUrl = `https://photon.komoot.io/reverse?lat=${b.lat}&lon=${b.lng}&lang=es&limit=1`;
+          const r = await fetch(photonUrl, { signal: AbortSignal.timeout(4000) });
+          if (!r.ok) return;
+          const j = await r.json();
+          const p = j.features?.[0]?.properties;
+          if (!p) return;
+          const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+          const locality = [p.city || p.locality, p.state].filter(Boolean).join(", ");
+          const addr = [street, locality].filter(Boolean).join(" · ");
+          if (addr) b.address = addr;
+        } catch {
+          // ignoramos errores de reverse geocoding individuales
+        }
+      })
+    );
+  }
+
   return items;
 }
 
@@ -178,25 +205,42 @@ export default function BranchPicker({ selected, onSelect }: Props) {
       {branches && branches.length > 0 && (
         <div className="space-y-2 mt-2 max-h-80 overflow-y-auto pr-1">
           {branches.map(b => (
-            <button
+            <div
               key={String(b.osm_id)}
-              type="button"
-              onClick={() => onSelect(b)}
-              className="w-full text-left rounded-2xl border border-rose-pastel hover:border-rose-deep hover:bg-rose-whisper p-3 transition"
+              className="rounded-2xl border border-rose-pastel hover:border-rose-deep hover:bg-rose-whisper p-3 transition"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-ink-primary text-sm leading-tight">{b.name}</p>
-                  {b.operator && b.operator.toLowerCase() !== b.name.toLowerCase() && (
-                    <p className="text-[11px] text-rose-deep font-semibold uppercase tracking-wide">{b.operator}</p>
-                  )}
-                  <p className="text-xs text-ink-secondary mt-0.5">{b.address}</p>
+              <button
+                type="button"
+                onClick={() => onSelect(b)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-ink-primary text-sm leading-tight">{b.name}</p>
+                    {b.operator && b.operator.toLowerCase() !== b.name.toLowerCase() && (
+                      <p className="text-[11px] text-rose-deep font-semibold uppercase tracking-wide">{b.operator}</p>
+                    )}
+                    {b.address ? (
+                      <p className="text-xs text-ink-secondary mt-0.5">{b.address}</p>
+                    ) : (
+                      <p className="text-[11px] text-ink-soft mt-0.5 italic">Tocá &quot;Ver en mapa&quot; para ver la dirección exacta</p>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-ink-soft font-mono whitespace-nowrap">
+                    {b.distance_km?.toFixed(1)} km
+                  </span>
                 </div>
-                <span className="text-[11px] text-ink-soft font-mono whitespace-nowrap">
-                  {b.distance_km?.toFixed(1)} km
-                </span>
-              </div>
-            </button>
+              </button>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lng}`}
+                target="_blank"
+                rel="noopener"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-rose-deep hover:underline font-semibold mt-2"
+              >
+                Ver en mapa <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           ))}
         </div>
       )}
