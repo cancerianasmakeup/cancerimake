@@ -34,9 +34,11 @@ export default async function AdminOrders({
 
   const supabase = await createSupabaseServer();
 
+  // Disambiguación: orders tiene 2 FKs a profiles (user_id + payment_approved_by).
+  // Especificamos !user_id para que PostgREST sepa cuál embeddear.
   let query = supabase
     .from("orders")
-    .select("*, profiles(first_name, last_name, full_name, email)")
+    .select("*, profiles!user_id(first_name, last_name, full_name, email)")
     .order("created_at", { ascending: false })
     .limit(200);
 

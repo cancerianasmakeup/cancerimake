@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Truck, CheckCircle2, Package, Banknote, MessageCircle,
-  FileText, Image as ImageIcon, ExternalLink,
+  FileText, Image as ImageIcon, ExternalLink, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -26,7 +26,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     if (!orderId) return;
     const { data } = await supabase
       .from("orders")
-      .select("*, profiles(full_name, first_name, last_name, email, phone), order_items(*)")
+      .select("*, profiles!user_id(full_name, first_name, last_name, email, phone), order_items(*)")
       .eq("id", orderId)
       .single();
     setOrder(data);
@@ -109,6 +109,29 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
     } catch (e: any) {
       toast.error("No se pudo aprobar: " + (e?.message ?? "error"));
     } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Borra la orden + items + cancela shipments asociados.
+   *  RLS solo permite a admins; el ON DELETE CASCADE/SET NULL hace la limpieza. */
+  async function deleteOrder() {
+    if (!orderId) return;
+    const ok = window.confirm(
+      `¿Eliminar la orden ${order.order_number}? Esta acción no se puede deshacer.\n\nSe borran:\n• La orden y sus productos\n• El envío asociado (si existe)`
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      // Borrar primero el shipment vinculado si existe (no tiene CASCADE desde orders)
+      await supabase.from("shipments").delete().eq("order_id", orderId);
+      // Después la orden (order_items tiene CASCADE)
+      const { error } = await supabase.from("orders").delete().eq("id", orderId);
+      if (error) throw error;
+      toast.success("Orden eliminada");
+      router.push("/admin/orders");
+    } catch (e: any) {
+      toast.error("No se pudo eliminar: " + (e?.message ?? "error"));
       setBusy(false);
     }
   }
@@ -303,6 +326,22 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
               </Link>
             </div>
           )}
+
+          {/* Zona peligrosa: eliminar */}
+          <div className="card border border-error/30 bg-error/5">
+            <h3 className="font-display text-sm text-error mb-1.5">Zona peligrosa</h3>
+            <p className="text-xs text-ink-soft mb-3">
+              Eliminar la orden borra los productos asociados y el envío vinculado. No se puede deshacer.
+            </p>
+            <button
+              onClick={deleteOrder}
+              disabled={busy}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-error text-white text-sm font-semibold hover:bg-error/90 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar orden
+            </button>
+          </div>
         </div>
       </div>
     </div>
