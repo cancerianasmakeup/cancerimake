@@ -135,12 +135,19 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
       telefono: prev.telefono || p?.phone || "",
     }));
 
-    // Status-driven step. Si el carrier ya está marcado como 'personalizado'
-    // (el caso cuando admin aprobó la orden y creó el shipment manual), saltamos
-    // la pantalla de "elegí carrier" e ir directo al form simple.
+    // Status-driven step.
+    //
+    // Saltamos directo al form manual ('custom-request') si:
+    //   - el carrier ya está marcado como 'personalizado' (admin lo creó así), O
+    //   - el cliente ya eligió destination_type en checkout o admin la setea
+    //
+    // Esto evita pasar por las pantallas de cotización Andreani/Correo cuando
+    // las APIs no están conectadas todavía (que es el caso actual sin convenio
+    // comercial).
     if (s.status === "pending_address") {
-      if (s.carrier === "personalizado") {
-        // Inicializar el tipo de destino que ya eligió en checkout
+      const hasDestType = !!s.destination_type;
+      const isCustom = s.carrier === "personalizado";
+      if (isCustom || hasDestType) {
         if (s.destination_type) setDestinationType(s.destination_type);
         setStep("custom-request");
       } else {
