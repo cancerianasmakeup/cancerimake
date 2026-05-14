@@ -24,9 +24,11 @@ type TabKey = "accounts" | "subscribers" | "all";
 type SortKey = "newest" | "oldest" | "spent_desc" | "orders_desc" | "last_order_desc" | "name_asc";
 type TagKey = "all" | "vip" | "recurrente" | "nueva" | "inactiva" | "sin_compras";
 
-// Umbral $ para badge VIP. Si total_spent >= este monto, o si paid_count >= 3, es VIP.
-const VIP_THRESHOLD = 30000;
-const RECURRENTE_MIN_ORDERS = 2;
+// Umbrales para clasificar clientas. VIP: muchísimas compras o muy alto gasto.
+// Recurrente: cliente leal con varias órdenes. Los otros son temporales (días).
+const VIP_THRESHOLD_SPENT  = 500000; // $500.000 acumulados pagos
+const VIP_THRESHOLD_ORDERS = 50;     // 50+ órdenes pagas
+const RECURRENTE_MIN_ORDERS = 20;    // 20+ órdenes pagas
 const NEW_DAYS = 30;
 const INACTIVE_DAYS = 90;
 
@@ -42,7 +44,7 @@ const TAG_DEFS: Record<Exclude<TagKey, "all">, Tag> = {
 
 function classifyCustomer(r: CustomerRow, now: Date): TagKey {
   if (r.paid_count === 0) return "sin_compras";
-  if (r.paid_count >= 3 || r.total_spent >= VIP_THRESHOLD) return "vip";
+  if (r.paid_count >= VIP_THRESHOLD_ORDERS || r.total_spent >= VIP_THRESHOLD_SPENT) return "vip";
 
   const last = r.last_order_at ? new Date(r.last_order_at) : null;
   const daysSinceLast = last ? (now.getTime() - last.getTime()) / 86400000 : Infinity;
@@ -50,7 +52,8 @@ function classifyCustomer(r: CustomerRow, now: Date): TagKey {
   if (daysSinceLast > INACTIVE_DAYS) return "inactiva";
   if (r.paid_count >= RECURRENTE_MIN_ORDERS) return "recurrente";
   if (daysSinceLast <= NEW_DAYS) return "nueva";
-  return "recurrente"; // tiene 1 pago, no es nueva ni inactiva
+  // Tiene entre 1 y RECURRENTE_MIN_ORDERS-1 órdenes pagas y no es nueva ni inactiva
+  return "nueva";
 }
 
 function formatPrice(n: number): string {
@@ -287,15 +290,15 @@ export default function CustomersExplorer({
                   </td>
                   <td className="p-3 space-y-0.5">
                     {r.email && (
-                      <a href={`mailto:${r.email}`} className="block text-xs text-ink-secondary hover:text-rose-deep inline-flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-ink-soft" />
-                        {r.email}
+                      <a href={`mailto:${r.email}`} className="flex items-center gap-1 text-xs text-ink-secondary hover:text-rose-deep">
+                        <Mail className="w-3 h-3 text-ink-soft flex-shrink-0" />
+                        <span className="truncate">{r.email}</span>
                       </a>
                     )}
                     {r.phone && (
-                      <a href={`https://wa.me/${onlyDigits(r.phone)}`} target="_blank" rel="noopener" className="block text-xs text-ink-secondary hover:text-success inline-flex items-center gap-1">
-                        <Phone className="w-3 h-3 text-ink-soft" />
-                        {r.phone}
+                      <a href={`https://wa.me/${onlyDigits(r.phone)}`} target="_blank" rel="noopener" className="flex items-center gap-1 text-xs text-ink-secondary hover:text-success">
+                        <Phone className="w-3 h-3 text-ink-soft flex-shrink-0" />
+                        <span className="truncate">{r.phone}</span>
                       </a>
                     )}
                     {!r.email && !r.phone && <span className="text-ink-soft text-xs">—</span>}
@@ -340,8 +343,8 @@ export default function CustomersExplorer({
       </div>
 
       <p className="text-xs text-ink-soft mt-4 leading-relaxed">
-        💡 <strong>Tags automáticos:</strong> <b>VIP</b> son las que pagaron 3+ órdenes o gastaron {formatPrice(VIP_THRESHOLD)}+ ·
-        <b> Recurrentes</b> tienen 2+ pagas · <b>Nuevas</b> compraron en los últimos {NEW_DAYS} días ·
+        💡 <strong>Tags automáticos:</strong> <b>VIP</b> son las que pagaron {VIP_THRESHOLD_ORDERS}+ órdenes o gastaron {formatPrice(VIP_THRESHOLD_SPENT)}+ ·
+        <b> Recurrentes</b> tienen {RECURRENTE_MIN_ORDERS}+ pagas · <b>Nuevas</b> compraron en los últimos {NEW_DAYS} días ·
         <b> Inactivas</b> no compran hace más de {INACTIVE_DAYS} días.
       </p>
     </div>
