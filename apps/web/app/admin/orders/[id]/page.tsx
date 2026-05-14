@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { getOrderStatusLabel } from "@/lib/order-status";
 
 export default function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const supabase = createSupabaseBrowser();
@@ -301,7 +302,7 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
 
               <div className="text-xs space-y-1 pt-2 border-t border-rose-pastel">
                 <p className="text-ink-soft">
-                  Estado: <span className="font-bold text-ink-primary">{order.status}</span>
+                  Estado: <span className="font-bold text-ink-primary">{getOrderStatusLabel(order.status).label}</span>
                 </p>
                 {order.payment_method && (
                   <p className="text-ink-soft">

@@ -22,19 +22,23 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
 
+// Labels específicos del admin (más action-oriented que los del cliente).
+// Los estados que no figuran caen al helper getShipmentStatusLabel.
 const STATUS_META: Record<string, { label: string; color: string; emoji: string }> = {
-  pending_address: { label: "Esperando dirección", color: "bg-warning/30 text-ink-primary", emoji: "📝" },
-  pending_custom_quote: { label: "Cotizar personalizado", color: "bg-rose-deep text-white animate-soft-pulse", emoji: "🤝" },
-  pending_payment: { label: "Esperando pago", color: "bg-warning/40 text-ink-primary", emoji: "⏳" },
-  paid: { label: "Pagado · listo p/ etiqueta", color: "bg-success/40 text-ink-primary animate-soft-pulse", emoji: "💚" },
-  label_generated: { label: "Etiqueta lista", color: "bg-rose-deep text-white", emoji: "🏷️" },
-  dispatched: { label: "Despachado", color: "bg-rose-medium text-ink-primary", emoji: "📦" },
-  in_transit: { label: "En tránsito", color: "bg-rose-pastel text-ink-primary", emoji: "🚚" },
-  out_for_delivery: { label: "En reparto", color: "bg-rose-pastel text-ink-primary", emoji: "🚪" },
-  delivered: { label: "Entregado", color: "bg-success/30 text-ink-primary", emoji: "✅" },
-  returned: { label: "Devuelto", color: "bg-error/20 text-ink-primary", emoji: "↩️" },
-  failed: { label: "Falló", color: "bg-error/30 text-ink-primary", emoji: "⚠️" },
-  cancelled: { label: "Cancelado", color: "bg-ink-soft/15 text-ink-soft", emoji: "❌" },
+  pending_address:      { label: "Esperando dirección",            color: "bg-warning/30 text-ink-primary", emoji: "📝" },
+  pending_custom_quote: { label: "Cotizar personalizado",          color: "bg-rose-deep text-white animate-soft-pulse", emoji: "🤝" },
+  pending_quote:        { label: "Cotizar personalizado",          color: "bg-rose-deep text-white animate-soft-pulse", emoji: "🤝" },
+  pending_payment:      { label: "Esperando pago",                 color: "bg-warning/40 text-ink-primary", emoji: "⏳" },
+  pending_approval:     { label: "Aprobar comprobante",            color: "bg-rose-deep text-white animate-soft-pulse", emoji: "🔔" },
+  paid:                 { label: "Pagado · listo p/ etiqueta",     color: "bg-success/40 text-ink-primary animate-soft-pulse", emoji: "💚" },
+  label_generated:      { label: "Etiqueta lista",                 color: "bg-rose-deep text-white", emoji: "🏷️" },
+  dispatched:           { label: "Despachado",                     color: "bg-rose-medium text-ink-primary", emoji: "📦" },
+  in_transit:           { label: "En tránsito",                    color: "bg-rose-pastel text-ink-primary", emoji: "🚚" },
+  out_for_delivery:     { label: "En reparto",                     color: "bg-rose-pastel text-ink-primary", emoji: "🚪" },
+  delivered:            { label: "Entregado",                      color: "bg-success/30 text-ink-primary", emoji: "✅" },
+  returned:             { label: "Devuelto",                       color: "bg-error/20 text-ink-primary", emoji: "↩️" },
+  failed:               { label: "Falló",                          color: "bg-error/30 text-ink-primary", emoji: "⚠️" },
+  cancelled:            { label: "Cancelado",                      color: "bg-ink-soft/15 text-ink-soft", emoji: "❌" },
 };
 
 export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {

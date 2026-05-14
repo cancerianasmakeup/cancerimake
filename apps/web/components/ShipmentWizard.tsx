@@ -21,6 +21,7 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
 import TransferInstructions from "@/components/TransferInstructions";
 import PaymentProofUploader from "@/components/PaymentProofUploader";
+import { getShipmentStatusLabel } from "@/lib/shipment-status";
 
 type Step = "auth-check" | "carrier" | "method" | "address" | "branch" | "custom-request" | "custom-waiting" | "confirm" | "paying" | "done";
 
@@ -795,7 +796,7 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           )}
 
           {!shipment.tracking_number && !shipment.andreani_tracking_number && shipment.status !== "paid" && shipment.status !== "label_generated" && (
-            <p className="text-ink-secondary mt-2">Estado actual: {shipment.status}</p>
+            <p className="text-ink-secondary mt-2">Estado actual: {getShipmentStatusLabel(shipment.status).label}</p>
           )}
         </div>
       )}
