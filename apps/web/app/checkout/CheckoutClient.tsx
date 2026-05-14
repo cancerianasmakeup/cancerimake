@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -40,7 +40,7 @@ export default function CheckoutClient() {
 
       const pm = pmRow?.value ?? {};
       setPaymentMethods(pm);
-      // Preseleccionar el Ãºnico mÃ©todo habilitado si hay uno solo
+      // Preseleccionar el único método habilitado si hay uno solo
       const available = [pm.transfer_enabled && "transfer", pm.mercadopago_enabled && "mercadopago"].filter(Boolean) as ("transfer" | "mercadopago")[];
       if (available.length === 1) setSelectedMethod(available[0]);
 
@@ -75,9 +75,9 @@ export default function CheckoutClient() {
 
   async function createOrder(method: "transfer" | "mercadopago") {
     if (!contact.full_name.trim()) return toast.error("Falta el nombre");
-    if (!contact.email.trim() || !isValidEmail(contact.email)) return toast.error("Email invÃ¡lido");
-    if (contact.phone && !isValidPhoneAR(contact.phone)) return toast.error("NÃºmero de WhatsApp invÃ¡lido");
-    if (items.length === 0) return toast.error("Tu carrito estÃ¡ vacÃ­o");
+    if (!contact.email.trim() || !isValidEmail(contact.email)) return toast.error("Email inválido");
+    if (contact.phone && !isValidPhoneAR(contact.phone)) return toast.error("Número de WhatsApp inválido");
+    if (items.length === 0) return toast.error("Tu carrito está vacío");
     setSubmitting(true);
     try {
       if (profile && (profile.full_name !== contact.full_name || profile.phone !== contact.phone)) {
@@ -150,7 +150,7 @@ export default function CheckoutClient() {
     <><Header /><div className="max-w-6xl mx-auto px-4 py-20 text-center text-ink-soft">Cargando...</div><Footer /></>
   );
 
-  // â”€â”€â”€ PANTALLA DE CONFIRMACIÃ“N DE TRANSFERENCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── PANTALLA DE CONFIRMACIÓN DE TRANSFERENCIA ───────────────────────────
   if (confirmedOrder) {
     return (
       <>
@@ -159,13 +159,13 @@ export default function CheckoutClient() {
           <div className="card text-center space-y-6">
             <CheckCircle2 className="w-16 h-16 text-success mx-auto" />
             <div>
-              <h1 className="font-display text-3xl text-ink-primary mb-2">Â¡Orden confirmada! ðŸŒ¸</h1>
-              <p className="text-ink-secondary">Ahora realizÃ¡ la transferencia y tu pedido se prepara enseguida.</p>
+              <h1 className="font-display text-3xl text-ink-primary mb-2">¡Orden confirmada! 🌸</h1>
+              <p className="text-ink-secondary">Ahora realizá la transferencia y tu pedido se prepara enseguida.</p>
             </div>
 
             <div className="bg-rose-whisper rounded-2xl p-5 text-left space-y-3">
               <div className="flex justify-between items-center pb-3 border-b border-rose-pastel">
-                <span className="text-sm text-ink-soft">NÃºmero de orden</span>
+                <span className="text-sm text-ink-soft">Número de orden</span>
                 <span className="font-mono font-bold text-ink-primary text-lg">{confirmedOrder.order_number}</span>
               </div>
               <div className="flex justify-between">
@@ -183,15 +183,15 @@ export default function CheckoutClient() {
             </div>
 
             <div className="bg-rose-deep/10 rounded-2xl p-4 text-sm text-ink-primary text-left space-y-1">
-              <p className="font-bold">ðŸ“ Importante: en el asunto/descripciÃ³n de la transferencia escribÃ­:</p>
+              <p className="font-bold">📝 Importante: en el asunto/descripción de la transferencia escribí:</p>
               <p className="font-mono text-rose-deep font-bold text-base text-center py-1">ORDEN {confirmedOrder.order_number}</p>
-              <p className="text-ink-soft text-xs">AsÃ­ identificamos tu pago automÃ¡ticamente y procesamos tu pedido mÃ¡s rÃ¡pido.</p>
+              <p className="text-ink-soft text-xs">Así identificamos tu pago automáticamente y procesamos tu pedido más rápido.</p>
             </div>
 
-            <p className="text-sm text-ink-secondary">Una vez que confirmemos el pago, te avisamos por email para que elijas el mÃ©todo de envÃ­o.</p>
+            <p className="text-sm text-ink-secondary">Una vez que confirmemos el pago, te avisamos por email para que elijas el método de envío.</p>
 
             <a href={`/orders`} className="btn-primary w-full flex items-center justify-center gap-2">
-              Ver mis Ã³rdenes
+              Ver mis órdenes
             </a>
           </div>
         </section>
@@ -209,8 +209,8 @@ export default function CheckoutClient() {
 
         {items.length === 0 ? (
           <div className="card text-center py-20">
-            <div className="text-6xl mb-4">ðŸ›ï¸</div>
-            <p className="text-ink-secondary mb-6">Tu carrito estÃ¡ vacÃ­o.</p>
+            <div className="text-6xl mb-4">🛍️</div>
+            <p className="text-ink-secondary mb-6">Tu carrito está vacío.</p>
             <button onClick={() => router.push("/")} className="btn-primary">Ir a la tienda</button>
           </div>
         ) : (
@@ -253,10 +253,10 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
-              {/* MÃ©todo de pago */}
+              {/* Método de pago */}
               {availableMethods.length > 0 && (
                 <div className="card space-y-4">
-                  <h2 className="font-display text-xl">CÃ³mo querÃ©s pagar</h2>
+                  <h2 className="font-display text-xl">Cómo querés pagar</h2>
                   <div className="space-y-3">
                     {paymentMethods.transfer_enabled && (
                       <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${selectedMethod === "transfer" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
@@ -266,7 +266,7 @@ export default function CheckoutClient() {
                             <Banknote className="w-5 h-5 text-rose-deep" />
                             <span className="font-semibold text-ink-primary">Transferencia bancaria / Alias</span>
                           </div>
-                          <p className="text-xs text-ink-soft mt-1">TransferÃ­s al alias que te indicamos y te confirmamos el pedido manualmente.</p>
+                          <p className="text-xs text-ink-soft mt-1">Transferís al alias que te indicamos y te confirmamos el pedido manualmente.</p>
                         </div>
                       </label>
                     )}
@@ -278,7 +278,7 @@ export default function CheckoutClient() {
                             <CreditCard className="w-5 h-5 text-rose-deep" />
                             <span className="font-semibold text-ink-primary">Mercado Pago</span>
                           </div>
-                          <p className="text-xs text-ink-soft mt-1">Tarjeta de crÃ©dito/dÃ©bito, dinero en cuenta MP o cuotas.</p>
+                          <p className="text-xs text-ink-soft mt-1">Tarjeta de crédito/débito, dinero en cuenta MP o cuotas.</p>
                         </div>
                       </label>
                     )}
@@ -288,7 +288,7 @@ export default function CheckoutClient() {
 
               {availableMethods.length === 0 && (
                 <div className="card bg-warning/10 border border-warning/40 text-center py-6">
-                  <p className="font-semibold text-ink-primary">La tienda no tiene mÃ©todos de pago habilitados.</p>
+                  <p className="font-semibold text-ink-primary">La tienda no tiene métodos de pago habilitados.</p>
                   <p className="text-ink-soft text-sm mt-1">Contactanos por WhatsApp para coordinar tu compra.</p>
                 </div>
               )}
@@ -301,10 +301,10 @@ export default function CheckoutClient() {
               <div className="rounded-2xl bg-rose-pastel/50 p-4 flex items-start gap-3">
                 <Truck className="w-5 h-5 text-rose-deep flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <strong className="text-ink-primary">EnvÃ­o en dos pasos.</strong>
+                  <strong className="text-ink-primary">Envío en dos pasos.</strong>
                   <ul className="mt-1 space-y-1 text-ink-secondary">
-                    <li>1ï¸âƒ£ ConfirmÃ¡s y pagÃ¡s los productos.</li>
-                    <li>2ï¸âƒ£ Cuando confirmemos el pago, te mandamos el link para elegir el envÃ­o.</li>
+                    <li>1️⃣ Confirmás y pagás los productos.</li>
+                    <li>2️⃣ Cuando confirmemos el pago, te mandamos el link para elegir el envío.</li>
                   </ul>
                 </div>
               </div>
@@ -315,7 +315,7 @@ export default function CheckoutClient() {
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-soft">EnvÃ­o</span>
+                  <span className="text-ink-soft">Envío</span>
                   <span className="text-ink-soft italic">se cotiza aparte</span>
                 </div>
               </div>
@@ -339,8 +339,8 @@ export default function CheckoutClient() {
               <div className="text-xs text-ink-soft flex items-start gap-2 leading-relaxed">
                 <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                 <span>
-                  Al pagar reservás los productos. Tenés 7 días para completar el envío. Si no lo
-                  hacés, te reembolsamos.
+                  Al pagar reserv�s los productos. Ten�s 7 d�as para completar el env�o. Si no lo
+                  hac�s, te reembolsamos.
                 </span>
               </div>
             </div>
