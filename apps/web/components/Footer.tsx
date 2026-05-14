@@ -1,13 +1,21 @@
 import Link from "next/link";
-import { Instagram, Music2, Heart } from "lucide-react";
-import { BRAND } from "@/lib/brand";
+import { Instagram, Music2, Heart, Mail } from "lucide-react";
+import { getBrandInfo } from "@/lib/site-settings";
 
-export default function Footer() {
+export default async function Footer() {
+  const brand = await getBrandInfo();
+
   return (
     <footer className="mt-16 border-t border-rose-pastel bg-rose-whisper/50">
       <div className="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-3 gap-8">
         <div>
-          <img src={BRAND.logoUrl} alt={BRAND.name} className="h-10 w-auto object-contain mb-3" />
+          <img src={brand.logo_url} alt={brand.name} className="h-10 w-auto object-contain mb-3" />
+          {brand.contact_email && (
+            <a href={`mailto:${brand.contact_email}`} className="text-xs text-ink-soft hover:text-rose-deep inline-flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5" />
+              {brand.contact_email}
+            </a>
+          )}
         </div>
         <div>
           <h4 className="font-display font-semibold text-ink-primary mb-3">Tienda</h4>
@@ -22,12 +30,16 @@ export default function Footer() {
         <div>
           <h4 className="font-display font-semibold text-ink-primary mb-3">Conectá</h4>
           <div className="flex gap-3">
-            <a href="https://instagram.com" target="_blank" rel="noopener" className="p-2 rounded-full bg-white shadow-soft hover:shadow-lift transition" aria-label="Instagram">
-              <Instagram className="w-5 h-5 text-rose-deep" />
-            </a>
-            <a href="https://tiktok.com" target="_blank" rel="noopener" className="p-2 rounded-full bg-white shadow-soft hover:shadow-lift transition" aria-label="TikTok">
-              <Music2 className="w-5 h-5 text-rose-deep" />
-            </a>
+            {brand.show_instagram && brand.instagram_url && (
+              <a href={brand.instagram_url} target="_blank" rel="noopener" className="p-2 rounded-full bg-white shadow-soft hover:shadow-lift transition" aria-label="Instagram">
+                <Instagram className="w-5 h-5 text-rose-deep" />
+              </a>
+            )}
+            {brand.show_tiktok && brand.tiktok_url && (
+              <a href={brand.tiktok_url} target="_blank" rel="noopener" className="p-2 rounded-full bg-white shadow-soft hover:shadow-lift transition" aria-label="TikTok">
+                <Music2 className="w-5 h-5 text-rose-deep" />
+              </a>
+            )}
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ export default function CheckoutClient() {
   const [submitting, setSubmitting] = useState(false);
   const [contact, setContact] = useState({ full_name: "", email: "", phone: "" });
   const [paymentMethods, setPaymentMethods] = useState<any>({});
+  const [shippingExtras, setShippingExtras] = useState<any>({});
   const [selectedMethod, setSelectedMethod] = useState<"transfer" | "mercadopago" | null>(null);
   // Orden creada tras confirmar transferencia
   const [confirmedOrder, setConfirmedOrder] = useState<{ order_number: string; alias: string; bank: string; cbu: string; holder: string } | null>(null);
@@ -29,17 +30,21 @@ export default function CheckoutClient() {
       if (!user) { router.replace("/auth?redirect=/checkout"); return; }
       setUser(user);
 
-      const [{ data: prof }, { data: cart }, { data: pmRow }] = await Promise.all([
+      const [{ data: prof }, { data: cart }, { data: settingsRows }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("carts").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
-        supabase.from("site_settings").select("value").eq("key", "payment_methods").maybeSingle(),
+        supabase.from("site_settings").select("key, value").in("key", ["payment_methods", "shipping_extras"]),
       ]);
 
       setProfile(prof);
       setContact({ full_name: prof?.full_name ?? "", email: user.email ?? "", phone: prof?.phone ?? "" });
 
-      const pm = pmRow?.value ?? {};
+      const settingsMap: Record<string, any> = {};
+      (settingsRows ?? []).forEach((r: any) => { settingsMap[r.key] = r.value; });
+      const pm = settingsMap.payment_methods ?? {};
+      const ex = settingsMap.shipping_extras ?? {};
       setPaymentMethods(pm);
+      setShippingExtras(ex);
       // Preseleccionar el único método habilitado si hay uno solo
       const available = [pm.transfer_enabled && "transfer", pm.mercadopago_enabled && "mercadopago"].filter(Boolean) as ("transfer" | "mercadopago")[];
       if (available.length === 1) setSelectedMethod(available[0]);
@@ -309,6 +314,19 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
+              {/* Mensaje motivador / confirmación de envío gratis */}
+              {Number(shippingExtras.free_shipping_threshold) > 0 && (
+                subtotal >= Number(shippingExtras.free_shipping_threshold) ? (
+                  <div className="rounded-2xl bg-success/10 border border-success/40 p-3 text-sm text-success font-semibold flex items-center gap-2">
+                    🎉 ¡Tu pedido tiene envío gratis incluido!
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-rose-whisper border border-rose-pastel p-3 text-sm text-ink-secondary">
+                    Te faltan <strong className="text-rose-deep">{formatPrice(Number(shippingExtras.free_shipping_threshold) - subtotal)}</strong> para envío gratis 🌸
+                  </div>
+                )
+              )}
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-ink-soft">Subtotal productos</span>
@@ -339,8 +357,8 @@ export default function CheckoutClient() {
               <div className="text-xs text-ink-soft flex items-start gap-2 leading-relaxed">
                 <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                 <span>
-                  Al pagar reserv�s los productos. Ten�s 7 d�as para completar el env�o. Si no lo
-                  hac�s, te reembolsamos.
+                  Al pagar reservás los productos. Tenés 7 días para completar el envío. Si no lo
+                  hacés, te reembolsamos.
                 </span>
               </div>
             </div>

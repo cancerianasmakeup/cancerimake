@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, User, Menu, X, Sparkles, Zap } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { BRAND } from "@/lib/brand";
+import { DEFAULT_BRAND, type BrandInfo } from "@/lib/site-settings";
 import {
   DEFAULT_STORE_STATUS,
   getStoreStatus,
@@ -12,11 +13,15 @@ import {
   type StoreStatusConfig,
 } from "@cancerianas/shared";
 
+type AppearanceCfg = { show_announcement_bar?: boolean; announcement_text?: string; announcement_link?: string };
+
 export default function Header() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [activeLive, setActiveLive] = useState<any>(null);
   const [storeConfig, setStoreConfig] = useState<StoreStatusConfig>(DEFAULT_STORE_STATUS);
+  const [brand, setBrand] = useState<BrandInfo>({ ...DEFAULT_BRAND, name: BRAND.name, tagline: BRAND.tagline, logo_url: BRAND.logoUrl });
+  const [appearance, setAppearance] = useState<AppearanceCfg>({});
   const [now, setNow] = useState(() => new Date());
   const supabase = createSupabaseBrowser();
 
@@ -32,16 +37,17 @@ export default function Header() {
       .single()
       .then(({ data }) => setActiveLive(data));
 
-    // Estado de tienda (drops + override)
+    // Cargar settings en paralelo (store_status + brand_info + appearance)
     supabase
       .from("site_settings")
-      .select("value")
-      .eq("key", "store_status")
-      .maybeSingle()
+      .select("key, value")
+      .in("key", ["store_status", "brand_info", "appearance"])
       .then(({ data }) => {
-        if (data?.value) {
-          setStoreConfig({ ...DEFAULT_STORE_STATUS, ...(data.value as Partial<StoreStatusConfig>) });
-        }
+        (data ?? []).forEach((row: any) => {
+          if (row.key === "store_status") setStoreConfig({ ...DEFAULT_STORE_STATUS, ...row.value });
+          else if (row.key === "brand_info") setBrand((prev) => ({ ...prev, ...row.value }));
+          else if (row.key === "appearance") setAppearance(row.value);
+        });
       });
 
     // Suscripción Realtime al estado del LIVE
@@ -120,13 +126,26 @@ export default function Header() {
         </div>
       )}
 
+      {/* Banner de anuncio configurable */}
+      {appearance.show_announcement_bar && appearance.announcement_text && (
+        appearance.announcement_link ? (
+          <Link href={appearance.announcement_link} className="block bg-ink-primary text-white text-xs sm:text-sm py-1.5 px-4 text-center font-medium hover:bg-ink-secondary transition">
+            {appearance.announcement_text}
+          </Link>
+        ) : (
+          <div className="bg-ink-primary text-white text-xs sm:text-sm py-1.5 px-4 text-center font-medium">
+            {appearance.announcement_text}
+          </div>
+        )
+      )}
+
       <header className="sticky top-0 z-40 backdrop-blur-md bg-cream/80 border-b border-rose-pastel">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             {/* Logo desde R2. Usa img normal porque next/image puede fallar con CORS */}
             <img
-              src={BRAND.logoUrl}
-              alt={BRAND.name}
+              src={brand.logo_url}
+              alt={brand.name}
               className="h-10 md:h-12 w-auto object-contain"
             />
           </Link>
