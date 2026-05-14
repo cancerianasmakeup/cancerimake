@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, User, Menu, X, Sparkles, Zap } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { BRAND } from "@/lib/brand";
-import { DEFAULT_BRAND, type BrandInfo } from "@/lib/site-settings";
+import { DEFAULT_BRAND, type BrandInfo } from "@/lib/site-settings-types";
 import {
   DEFAULT_STORE_STATUS,
   getStoreStatus,

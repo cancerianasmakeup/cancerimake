@@ -1,9 +1,25 @@
-import Link from "next/link";
-import { Instagram, Music2, Heart, Mail } from "lucide-react";
-import { getBrandInfo } from "@/lib/site-settings";
+"use client";
 
-export default async function Footer() {
-  const brand = await getBrandInfo();
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Instagram, Music2, Heart, Mail } from "lucide-react";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { DEFAULT_BRAND, type BrandInfo } from "@/lib/site-settings-types";
+
+export default function Footer() {
+  const [brand, setBrand] = useState<BrandInfo>(DEFAULT_BRAND);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowser();
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "brand_info")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setBrand((prev) => ({ ...prev, ...data.value }));
+      });
+  }, []);
 
   return (
     <footer className="mt-16 border-t border-rose-pastel bg-rose-whisper/50">
