@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
@@ -127,14 +126,27 @@ function AuthForm() {
     }
   }
 
+  // Cargamos el script de GIS manualmente (en vez de <Script> de next/script)
+  // porque sus tipos chocan con los de React 19 en build de Next 15.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const SRC = "https://accounts.google.com/gsi/client";
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SRC}"]`);
+    if (existing) {
+      if ((window as any).google) setGsiReady(true);
+      else existing.addEventListener("load", () => setGsiReady(true), { once: true });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = SRC;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => setGsiReady(true);
+    document.head.appendChild(s);
+  }, []);
+
   return (
     <>
-      <Script
-        src="https://accounts.google.com/gsi/client"
-        strategy="afterInteractive"
-        onLoad={() => setGsiReady(true)}
-      />
-
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
