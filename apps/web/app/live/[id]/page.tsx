@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Users, ShoppingBag, Clock, AlertCircle } from "lucide-react";
+import { Sparkles, Users, ShoppingBag, Clock, AlertCircle, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, offerAvailable } from "@cancerianas/shared";
@@ -10,6 +10,7 @@ import type { LiveEvent, LiveOffer, LivePurchase } from "@cancerianas/shared";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LivePurchaseFlow from "@/components/LivePurchaseFlow";
+import LoginModal from "@/components/LoginModal";
 
 const TYPE_INFO: Record<string, { emoji: string; name: string }> = {
   capsulas: { emoji: "💊", name: "Cápsulas" },
@@ -27,14 +28,23 @@ export default function LiveEventPage({ params }: { params: Promise<{ id: string
   const [activePurchase, setActivePurchase] = useState<LivePurchase | null>(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  // Guardamos la oferta que la clienta quería comprar antes de loguearse, para
+  // disparar la compra automáticamente después del login.
+  const pendingOfferRef = useRef<LiveOffer | null>(null);
 
   useEffect(() => {
     params.then(p => setEventId(p.id));
   }, [params]);
 
-  // Cargar usuario
+  // Suscripción al estado de auth para que el label del botón se actualice
+  // automáticamente al loguearse (incluido el caso del modal).
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   // Cargar evento + ofertas + compra activa
@@ -92,7 +102,8 @@ export default function LiveEventPage({ params }: { params: Promise<{ id: string
 
   async function handleBuy(offer: LiveOffer) {
     if (!user) {
-      router.push(`/auth?redirect=/live/${eventId}`);
+      pendingOfferRef.current = offer;
+      setLoginOpen(true);
       return;
     }
     if (!event || event.status !== "active") {
@@ -289,9 +300,12 @@ export default function LiveEventPage({ params }: { params: Promise<{ id: string
                     {buying === offer.id ? "Procesando..." :
                       isSoldOut ? "Agotado" :
                       isReleasePending ? "Esperando que admin libere..." :
+                      !user ? "Iniciá sesión para comprar" :
                       event.type === "bolsitas" ? "Sumarme a la fila" :
                       "Comprar ahora"}
-                    {!isSoldOut && !isReleasePending && <ShoppingBag className="w-4 h-4" />}
+                    {!isSoldOut && !isReleasePending && (
+                      !user ? <LogIn className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               );
@@ -301,6 +315,19 @@ export default function LiveEventPage({ params }: { params: Promise<{ id: string
       </div>
 
       <Footer />
+
+      <LoginModal
+        open={loginOpen}
+        onClose={() => { setLoginOpen(false); pendingOfferRef.current = null; }}
+        title="Iniciá sesión para comprar en el LIVE"
+        onSuccess={() => {
+          const offer = pendingOfferRef.current;
+          pendingOfferRef.current = null;
+          // Esperamos un tick para que onAuthStateChange actualice 'user',
+          // así handleBuy ve al usuario logueado.
+          if (offer) setTimeout(() => handleBuy(offer), 50);
+        }}
+      />
     </>
   );
 }

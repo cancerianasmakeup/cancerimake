@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Minus, Plus } from "lucide-react";
+import { ShoppingBag, Minus, Plus, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
 import type { ProductVariant } from "@cancerianas/shared";
+import LoginModal from "./LoginModal";
 
 export default function AddToCartButton({
   productId,
@@ -22,13 +23,38 @@ export default function AddToCartButton({
   const [qty, setQty] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  // Suscribimos al estado de auth para que el label del botón se actualice
+  // automáticamente al loguearse (incluido el caso de loguearse via modal).
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setIsAuthed(!!data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setIsAuthed(!!session?.user);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, [supabase]);
+
+  function handleClick() {
+    if (isAuthed === false) {
+      setLoginOpen(true);
+      return;
+    }
+    addToCart();
+  }
 
   async function addToCart() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/auth?redirect=" + encodeURIComponent(window.location.pathname));
+        // Salvaguarda por si el estado quedó desincronizado (no debería pasar).
+        setLoading(false);
+        setLoginOpen(true);
         return;
       }
 
@@ -178,13 +204,28 @@ export default function AddToCartButton({
       </div>
 
       <button
-        onClick={addToCart}
+        onClick={handleClick}
         disabled={loading || (variants.length > 0 && !selectedVariant)}
         className="btn-primary w-full text-base py-4"
       >
-        <ShoppingBag className="w-5 h-5" />
-        {loading ? "Agregando..." : "Agregar al carrito"}
+        {isAuthed === false ? <LogIn className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
+        {loading
+          ? "Agregando..."
+          : isAuthed === false
+          ? "Iniciá sesión para comprar"
+          : "Agregar al carrito"}
       </button>
+
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        title="Iniciá sesión para agregar al carrito"
+        onSuccess={() => {
+          // El listener de onAuthStateChange ya actualizó isAuthed; agregamos
+          // automáticamente para no obligar a la clienta a clickear de nuevo.
+          addToCart();
+        }}
+      />
     </div>
   );
 }
