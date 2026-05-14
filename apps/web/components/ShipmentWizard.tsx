@@ -21,6 +21,7 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
 import TransferInstructions from "@/components/TransferInstructions";
 import PaymentProofUploader from "@/components/PaymentProofUploader";
+import BranchPicker, { type PickedBranch } from "@/components/BranchPicker";
 import { getShipmentStatusLabel } from "@/lib/shipment-status";
 
 type Step = "auth-check" | "carrier" | "method" | "address" | "branch" | "custom-request" | "custom-waiting" | "confirm" | "paying" | "done";
@@ -122,6 +123,10 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
     setProfile(p);
     setExtras(ext?.value ?? {});
     if (s.carrier) setCarrier(s.carrier as ShipmentCarrier);
+    if (s.destination_branch) setSelectedBranch(s.destination_branch);
+    if (s.destination_address) {
+      setAddress((prev) => ({ ...prev, ...(s.destination_address as Record<string, any>) }));
+    }
 
     // Pre-llenar el form con datos del profile
     setAddress((prev) => ({
@@ -289,15 +294,20 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
     setBusy(true);
     // Hacemos update directo (no RPC) para incluir destination_type y branch si aplica.
     // RLS permite update mientras status sea pending_address (USING se evalúa antes del cambio).
+    const updates: Record<string, any> = {
+      status: "pending_custom_quote",
+      carrier: "personalizado",
+      destination_type: destinationType,
+      destination_address: address,
+      custom_quote_message: customMessage || null,
+    };
+    // Si eligió sucursal y picó una específica, la guardamos como snapshot
+    if (destinationType === "sucursal" && selectedBranch) {
+      updates.destination_branch = selectedBranch;
+    }
     const { error } = await supabase
       .from("shipments")
-      .update({
-        status: "pending_custom_quote",
-        carrier: "personalizado",
-        destination_type: destinationType,
-        destination_address: address,
-        custom_quote_message: customMessage || null,
-      })
+      .update(updates)
       .eq("id", shipmentId);
     setBusy(false);
     if (error) {
@@ -648,12 +658,10 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           )}
 
           {destinationType === "sucursal" && (
-            <div className="card bg-rose-whisper/60 text-sm">
-              <p className="text-ink-secondary">
-                📍 Coordinamos por WhatsApp en qué sucursal de tu zona te conviene retirar el paquete.
-                Si tenés alguna preferencia, escribíla abajo.
-              </p>
-            </div>
+            <BranchPicker
+              selected={selectedBranch as PickedBranch | null}
+              onSelect={(b) => setSelectedBranch(b)}
+            />
           )}
 
           <div>

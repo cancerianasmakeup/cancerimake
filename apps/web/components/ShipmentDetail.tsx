@@ -538,10 +538,25 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
                 <p className="text-xs uppercase font-bold text-ink-soft tracking-wider mb-2">
                   📍 Retira en sucursal
                 </p>
-                <p className="font-semibold text-ink-primary">{branch?.nombre}</p>
+                <p className="font-semibold text-ink-primary">{branch?.nombre || branch?.name || "—"}</p>
                 <p className="text-sm text-ink-secondary">
-                  {branch?.direccion} · {branch?.localidad} · CP {branch?.codigoPostal}
+                  {branch?.direccion || branch?.address || ""}
+                  {branch?.localidad && ` · ${branch.localidad}`}
+                  {branch?.codigoPostal && ` · CP ${branch.codigoPostal}`}
                 </p>
+                {(branch?.lat && branch?.lng) && (
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${branch.lat},${branch.lng}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1 text-xs text-rose-deep hover:underline mt-1.5 font-semibold"
+                  >
+                    Ver en mapa →
+                  </a>
+                )}
+                {branch?.operator && (
+                  <p className="text-xs text-ink-soft mt-1 uppercase tracking-wide font-semibold">{branch.operator}</p>
+                )}
               </div>
             ) : (
               <div>
