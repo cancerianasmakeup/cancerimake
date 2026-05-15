@@ -249,15 +249,13 @@ export default function ShopBrowser({
                   }
                 >
                   {!c.image_url && (
-                    <>
-                      <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
-                        <span className="text-xl md:text-2xl leading-none">{c.icon || "🌸"}</span>
-                      </div>
-                      <h3 className="absolute bottom-3 left-3 md:bottom-5 md:left-5 font-sans text-xl md:text-3xl font-black text-white tracking-tight leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
-                        {c.name}
-                      </h3>
-                    </>
+                    <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
+                      <span className="text-xl md:text-2xl leading-none">{c.icon || "🌸"}</span>
+                    </div>
                   )}
+                  <h3 className="absolute bottom-3 left-3 md:bottom-4 md:left-4 font-sans text-sm md:text-base font-bold text-white tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                    {c.name}
+                  </h3>
                   <ArrowRight className="absolute bottom-4 right-4 w-5 h-5 text-white drop-shadow opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all" />
                 </Link>
               );

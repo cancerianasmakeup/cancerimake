@@ -105,6 +105,59 @@
   }
 }
 
+/* Cursor decorativo con cangrejito (desktop fino) — se monta vía <CustomCursor />.
+   En mobile/touch los elementos quedan ocultos por display:none. */
+.cancer-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+  will-change: transform;
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .cancer-cursor {
+    display: block;
+  }
+}
+.cancer-cursor--halo {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(255, 200, 215, 0.55) 0%,
+    rgba(255, 143, 163, 0.35) 45%,
+    rgba(255, 143, 163, 0) 72%
+  );
+  box-shadow: 0 0 24px rgba(255, 143, 163, 0.25);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .cancer-cursor--halo {
+    display: flex;
+  }
+}
+.cancer-cursor__crab {
+  font-size: 16px;
+  line-height: 1;
+  display: inline-block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+  will-change: transform;
+}
+.cancer-cursor--dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rose-deep, #E66B85);
+  box-shadow: 0 0 6px rgba(230, 107, 133, 0.45);
+}
+
 /* Petalitos decorativos */
 .petal-bg::before {
   content: "";

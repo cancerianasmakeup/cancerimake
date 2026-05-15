@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { BRAND } from "@/lib/brand";
 import { getBrandInfo, getSeo, getAnalytics } from "@/lib/site-settings";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import CustomCursor from "@/components/CustomCursor";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import "../styles/globals.css";
 
@@ -114,6 +115,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ConfirmProvider>
           {children}
           <WhatsAppButton />
+          <CustomCursor />
         </ConfirmProvider>
         <Toaster
           position="top-center"

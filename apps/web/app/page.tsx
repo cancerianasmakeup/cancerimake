@@ -74,7 +74,7 @@ async function HomeOpen() {
         <div className="relative w-full max-w-6xl mx-auto px-4 pt-8 pb-16 md:pt-10 md:pb-24 space-y-8">
 
           {/* Logo + bienvenida */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-center gap-3 min-w-0">
             <img
               src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/logo%20solo%20(1).png"
               alt="Cancerianas"
@@ -94,21 +94,21 @@ async function HomeOpen() {
             </p>
           </div>
 
-          {/* Carrusel flotante arriba del texto */}
+          {/* Carrusel — un poco más chico, centrado */}
           <div className="w-full max-w-3xl mx-auto rounded-[2rem] overflow-hidden shadow-[0_32px_80px_-12px_rgba(0,0,0,0.28)] ring-1 ring-white/40">
             <BannerCarousel />
           </div>
 
-          {/* Texto hero */}
-          <div className="max-w-xl mx-auto md:mx-0 space-y-6 text-center md:text-left">
-            <h1 className="font-display text-5xl md:text-7xl leading-[1.05] text-ink-primary drop-shadow-sm font-black">
+          {/* Texto hero — siempre centrado horizontalmente */}
+          <div className="max-w-2xl mx-auto space-y-6 text-center">
+            <h1 className="font-display text-[clamp(2rem,9vw,5rem)] md:text-7xl leading-[1.05] text-ink-primary drop-shadow-sm font-black md:whitespace-nowrap">
               TU LUGAR,
               <span className="block italic text-rose-deep">NUESTRO LUGAR.</span>
             </h1>
-            <p className="text-lg text-ink-secondary leading-relaxed max-w-md">
+            <p className="text-lg text-ink-secondary leading-relaxed max-w-md mx-auto">
               Un lugar para todas, para que todo sea más fácil y más cómodo. Acá van a estar desde las dinámicas hasta los envíos. Acá va a estar todo.
             </p>
-            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            <div className="flex flex-wrap gap-3 justify-center">
               <Link href="/shop" className="btn-primary">
                 Ver tienda <ArrowRight className="w-4 h-4" />
               </Link>
@@ -119,7 +119,7 @@ async function HomeOpen() {
                 </Link>
               )}
             </div>
-            <div className="flex gap-6 pt-2 text-sm text-ink-secondary justify-center md:justify-start">
+            <div className="flex gap-6 pt-2 text-sm text-ink-secondary justify-center">
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-rose-deep" /> Envíos a todo el país
               </div>
@@ -132,34 +132,72 @@ async function HomeOpen() {
         </div>
       </section>
 
-      {/* TIKTOK BANNER */}
-      <section className="max-w-6xl mx-auto px-4 mt-8 mb-2">
+      {/* TIKTOK BANNER — logo sticker grande + card pegada a la derecha */}
+      <section className="max-w-6xl mx-auto px-4 mt-8 mb-4">
         <a
           href="https://www.tiktok.com/@cancerianas.makeup2"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col items-center gap-5 rounded-3xl px-8 py-10 bg-[#010101] text-white shadow-2xl hover:scale-[1.02] transition-transform active:scale-100 relative overflow-hidden"
+          aria-label="Seguinos en TikTok @cancerianas.makeup2"
+          className="group flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 hover:scale-[1.01] transition-transform active:scale-100"
         >
-          {/* Glow decorativo */}
-          <div className="absolute -top-10 -left-10 w-48 h-48 bg-[#69C9D0] opacity-20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-[#EE1D52] opacity-20 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Logo + texto */}
-          <div className="relative flex items-center gap-4">
-            <svg viewBox="0 0 24 24" className="w-14 h-14 shrink-0 drop-shadow-lg" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#EE1D52" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"/>
-              <path fill="#69C9D0" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" opacity="0.5"/>
-              <path fill="white" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" opacity="0.85"/>
+          {/* Logo sticker — grande, recortado, ligeramente rotado, con sombra fuerte */}
+          <div
+            className="relative z-10 shrink-0 -mb-6 md:mb-0 md:-mr-8 md:-rotate-6 group-hover:md:-rotate-3 transition-transform duration-300"
+            style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,0.35))" }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-28 h-28 md:w-44 md:h-44"
+            >
+              {/* Capa cyan (atrás, offset arriba-derecha) */}
+              <g transform="translate(0.7, -0.7)">
+                <path
+                  fill="#25F4EE"
+                  d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"
+                />
+              </g>
+              {/* Capa rosa (atrás, offset abajo-izquierda) */}
+              <g transform="translate(-0.7, 0.7)">
+                <path
+                  fill="#FE2C55"
+                  d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"
+                />
+              </g>
+              {/* Nota principal blanca (al frente) */}
+              <path
+                fill="white"
+                d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"
+                stroke="#000"
+                strokeWidth="0.3"
+              />
             </svg>
-            <div>
-              <p className="text-xs text-white/50 uppercase tracking-widest font-semibold">Seguinos y miranos en</p>
-              <p className="text-2xl md:text-3xl font-black tracking-tight leading-tight">TikTok</p>
-              <p className="text-white/70 text-sm font-medium mt-0.5">@cancerianas.makeup2</p>
-            </div>
           </div>
 
-          <div className="relative bg-white text-[#010101] rounded-full px-8 py-3 font-black text-base tracking-wide shadow-lg">
-            ¡Seguir ahora! →
+          {/* Card a la derecha — pegada al logo */}
+          <div className="relative w-full md:w-auto rounded-3xl bg-[#010101] text-white shadow-2xl overflow-hidden">
+            {/* Glows decorativos */}
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#25F4EE] opacity-25 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#FE2C55] opacity-25 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative px-6 py-5 md:pl-16 md:pr-8 md:py-7 flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#25F4EE]">
+                  Tu pase al backstage
+                </p>
+                <p className="font-display text-2xl md:text-3xl font-black tracking-tight mt-1 leading-none">
+                  @cancerianas.makeup2
+                </p>
+                <p className="text-white/60 text-sm font-medium mt-1.5">
+                  Drops, dinámicas y LIVES en TikTok
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 bg-white text-[#010101] rounded-full px-6 py-3 font-black text-sm tracking-wide shadow-lg shrink-0 group-hover:gap-3 transition-all">
+                Seguir
+                <span className="inline-block group-hover:translate-x-1 transition-transform">→</span>
+              </span>
+            </div>
           </div>
         </a>
       </section>
@@ -217,15 +255,13 @@ async function HomeOpen() {
                 }
               >
                 {!cat.image_url && (
-                  <>
-                    <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
-                      <span className="text-xl md:text-2xl leading-none">{cat.icon || "🌸"}</span>
-                    </div>
-                    <h3 className="absolute bottom-3 left-3 md:bottom-5 md:left-5 font-sans text-xl md:text-3xl font-black text-white tracking-tight leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
-                      {cat.name}
-                    </h3>
-                  </>
+                  <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
+                    <span className="text-xl md:text-2xl leading-none">{cat.icon || "🌸"}</span>
+                  </div>
                 )}
+                <h3 className="absolute bottom-3 left-3 md:bottom-4 md:left-4 font-sans text-sm md:text-base font-bold text-white tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                  {cat.name}
+                </h3>
               </Link>
             );
           })}
