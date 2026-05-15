@@ -194,24 +194,41 @@ async function HomeOpen() {
         <h2 className="font-sans text-2xl font-black tracking-tight mb-8 text-center uppercase">
           <span className="text-ink-primary">Elegí lo que </span><span className="text-rose-deep">buscas</span>
         </h2>
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
-          {(categories as Category[] | null)?.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/category/${cat.slug}`}
-              className="aspect-square rounded-2xl p-3 flex flex-col justify-between hover:shadow-lift transition-all group hover:-translate-y-1"
-              style={{
-                background: `linear-gradient(135deg, ${cat.gradient_from || "#FFE5EC"}, ${cat.gradient_to || "#FFB3C6"})`,
-              }}
-            >
-              <span className="text-2xl drop-shadow-sm">{cat.icon || "🌸"}</span>
-              <div>
-                <h3 className="font-display text-xs font-bold text-white drop-shadow-sm leading-tight">
-                  {cat.name}
-                </h3>
-              </div>
-            </Link>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+          {(categories as Category[] | null)?.map((cat) => {
+            const from = cat.gradient_from || "#FFE5EC";
+            const to = cat.gradient_to || "#FFB3C6";
+            return (
+              <Link
+                key={cat.id}
+                href={`/category/${cat.slug}`}
+                aria-label={cat.name}
+                className="relative aspect-square rounded-3xl overflow-hidden shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
+                style={
+                  cat.image_url
+                    ? {
+                        backgroundImage: `url(${cat.image_url})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : {
+                        background: `radial-gradient(circle at 25% 20%, ${from}, ${to} 75%)`,
+                      }
+                }
+              >
+                {!cat.image_url && (
+                  <>
+                    <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
+                      <span className="text-xl md:text-2xl leading-none">{cat.icon || "🌸"}</span>
+                    </div>
+                    <h3 className="absolute bottom-3 left-3 md:bottom-5 md:left-5 font-sans text-xl md:text-3xl font-black text-white tracking-tight leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
+                      {cat.name}
+                    </h3>
+                  </>
+                )}
+              </Link>
+            );
+          })}
         </div>
       </section>
 

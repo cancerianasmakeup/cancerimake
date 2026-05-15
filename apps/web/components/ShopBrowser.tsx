@@ -226,25 +226,42 @@ export default function ShopBrowser({
           <h2 className="font-display text-2xl md:text-3xl text-ink-primary mb-6">
             Explorá por categoría
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`/category/${c.slug}`}
-                className="aspect-[4/5] rounded-3xl p-4 flex flex-col justify-between hover:shadow-lift transition-all hover:-translate-y-1"
-                style={{
-                  background: `linear-gradient(135deg, ${(c as any).gradient_from || "#FFE5EC"}, ${(c as any).gradient_to || "#FFB3C6"})`,
-                }}
-              >
-                <span className="text-3xl drop-shadow-sm">{c.icon || "🌸"}</span>
-                <div>
-                  <h3 className="font-display text-xl text-white drop-shadow-sm">
-                    {c.name}
-                  </h3>
-                  <ArrowRight className="w-4 h-4 text-white mt-1" />
-                </div>
-              </Link>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+            {categories.map((c) => {
+              const from = (c as any).gradient_from || "#FFE5EC";
+              const to = (c as any).gradient_to || "#FFB3C6";
+              return (
+                <Link
+                  key={c.id}
+                  href={`/category/${c.slug}`}
+                  aria-label={c.name}
+                  className="relative aspect-square rounded-3xl overflow-hidden shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
+                  style={
+                    c.image_url
+                      ? {
+                          backgroundImage: `url(${c.image_url})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }
+                      : {
+                          background: `radial-gradient(circle at 25% 20%, ${from}, ${to} 75%)`,
+                        }
+                  }
+                >
+                  {!c.image_url && (
+                    <>
+                      <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
+                        <span className="text-xl md:text-2xl leading-none">{c.icon || "🌸"}</span>
+                      </div>
+                      <h3 className="absolute bottom-3 left-3 md:bottom-5 md:left-5 font-sans text-xl md:text-3xl font-black text-white tracking-tight leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
+                        {c.name}
+                      </h3>
+                    </>
+                  )}
+                  <ArrowRight className="absolute bottom-4 right-4 w-5 h-5 text-white drop-shadow opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all" />
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
