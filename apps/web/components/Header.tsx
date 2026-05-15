@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, User, Menu, X, Sparkles, Zap } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -23,7 +24,21 @@ export default function Header() {
   const [brand, setBrand] = useState<BrandInfo>({ ...DEFAULT_BRAND, name: BRAND.name, tagline: BRAND.tagline, logo_url: BRAND.logoUrl });
   const [appearance, setAppearance] = useState<AppearanceCfg>({});
   const [now, setNow] = useState(() => new Date());
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
   const supabase = createSupabaseBrowser();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname?.startsWith(href);
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -140,37 +155,55 @@ export default function Header() {
         )
       )}
 
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-cream/80 border-b border-rose-pastel">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            {/* Logo desde R2. Usa img normal porque next/image puede fallar con CORS */}
+      <header
+        className={`sticky top-0 z-40 backdrop-blur-md transition-all duration-300 ${
+          scrolled
+            ? "bg-cream/95 border-b border-rose-pastel shadow-[0_4px_20px_-8px_rgba(255,143,163,0.25)]"
+            : "bg-cream/60 border-b border-transparent"
+        }`}
+      >
+        <div
+          className={`max-w-6xl mx-auto px-4 flex items-center justify-between transition-all duration-300 ${
+            scrolled ? "py-2" : "py-3"
+          }`}
+        >
+          <Link href="/" className="group flex items-center gap-2">
             <img
               src={brand.logo_url}
               alt={brand.name}
-              className="h-10 md:h-12 w-auto object-contain"
+              className={`w-auto object-contain transition-all duration-300 group-hover:rotate-[-4deg] group-hover:scale-105 ${
+                scrolled ? "h-9 md:h-10" : "h-10 md:h-12"
+              }`}
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-ink-secondary font-medium">
-            <Link href="/" className="hover:text-rose-deep transition">Inicio</Link>
-            <Link href="/shop" className="hover:text-rose-deep transition">Tienda</Link>
-            <Link href="/live" className="hover:text-rose-deep transition flex items-center gap-1">
-              LIVE {activeLive && <span className="w-2 h-2 bg-rose-deep rounded-full animate-pulse" />}
+          <nav className="hidden md:flex items-center gap-7 text-ink-secondary font-medium">
+            <Link href="/" data-active={isActive("/") || undefined} className="nav-link hover:text-rose-deep">
+              Inicio
             </Link>
-            <Link href="/orders" className="hover:text-rose-deep transition">Mis compras</Link>
+            <Link href="/shop" data-active={isActive("/shop") || undefined} className="nav-link hover:text-rose-deep">
+              Tienda
+            </Link>
+            <Link href="/live" data-active={isActive("/live") || undefined} className="nav-link hover:text-rose-deep flex items-center gap-1.5">
+              LIVE
+              {activeLive && <span className="w-2 h-2 bg-rose-deep rounded-full animate-pulse shadow-[0_0_8px_rgba(230,107,133,0.8)]" />}
+            </Link>
+            <Link href="/orders" data-active={isActive("/orders") || undefined} className="nav-link hover:text-rose-deep">
+              Mis compras
+            </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link
               href={user ? "/account" : "/auth"}
-              className="p-2 rounded-full hover:bg-rose-whisper transition"
+              className="p-2 rounded-full hover:bg-rose-whisper transition-colors"
               aria-label="Cuenta"
             >
-              <User className="w-5 h-5 text-ink-primary" />
+              <User className="w-5 h-5 text-ink-primary transition-transform hover:scale-110" />
             </Link>
             <Link
               href="/checkout"
-              className="p-2 rounded-full hover:bg-rose-whisper transition"
+              className="cart-icon-wrapper relative p-2 rounded-full hover:bg-rose-whisper transition-colors"
               aria-label="Carrito"
             >
               <ShoppingCart className="w-5 h-5 text-ink-primary" />

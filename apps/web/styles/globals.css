@@ -105,6 +105,104 @@
   }
 }
 
+/* Texto BIENVENIDA con gradiente animado */
+@keyframes bienvenida-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.bienvenida-text {
+  background: linear-gradient(
+    90deg,
+    #F06292 0%,
+    #EC407A 20%,
+    #FF80AB 40%,
+    #FF4081 60%,
+    #EC407A 80%,
+    #F06292 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: bienvenida-gradient 5s ease-in-out infinite;
+}
+
+/* Cangrejito que se balancea */
+@keyframes crab-rock {
+  0%, 100% { transform: rotate(-6deg) translateY(0); }
+  25%      { transform: rotate(0deg)  translateY(-2px); }
+  50%      { transform: rotate(6deg)  translateY(0); }
+  75%      { transform: rotate(0deg)  translateY(-2px); }
+}
+.crab-rocking {
+  animation: crab-rock 4s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+
+/* Sparkles flotantes — pequeños destellos que aparecen y desaparecen */
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1.1) rotate(180deg); }
+}
+.sparkle-twinkle {
+  animation: sparkle-twinkle 2.4s ease-in-out infinite;
+}
+
+/* Underline animado para nav links del header (se dibuja en hover, persiste si activo) */
+.nav-link {
+  position: relative;
+  padding: 0.5rem 0.25rem;
+  transition: color 0.25s ease;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #FF8FA3, #E66B85, #FF8FA3);
+  border-radius: 2px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+.nav-link:hover::after,
+.nav-link[data-active="true"]::after {
+  width: calc(100% - 8px);
+  left: 4px;
+}
+.nav-link[data-active="true"] {
+  color: var(--rose-deep, #E66B85);
+  font-weight: 700;
+}
+
+/* Cart icon wiggle al hover */
+@keyframes cart-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-8deg); }
+  75%      { transform: rotate(8deg); }
+}
+.cart-icon-wrapper:hover svg {
+  animation: cart-wiggle 0.5s ease-in-out;
+}
+
+/* Subrayado animado del hero "NUESTRO LUGAR." — se dibuja al cargar. */
+@keyframes draw-underline {
+  from { stroke-dashoffset: 600; }
+  to   { stroke-dashoffset: 0;   }
+}
+.hero-underline-path {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: draw-underline 1.4s 0.4s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-underline-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Glow rotativo premium para cards de categoría.
    Dos capas: un haz nítido de borde con hotspot blanco + halo difuso amplio que lo persigue.
    Aplicar la clase .category-glow al <Link> de cada card (y NO usar overflow-hidden ahí). */

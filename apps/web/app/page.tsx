@@ -73,22 +73,37 @@ async function HomeOpen() {
 
         <div className="relative w-full max-w-6xl mx-auto px-4 pt-8 pb-16 md:pt-10 md:pb-24 space-y-8">
 
-          {/* Logo + bienvenida */}
-          <div className="flex items-center justify-center gap-3 min-w-0">
+          {/* Logo + bienvenida con FX: cangrejo balanceándose, gradiente animado, sparkles */}
+          <div className="relative flex items-center justify-center gap-3 min-w-0">
+            {/* Sparkles flotantes alrededor */}
+            <Sparkles
+              className="absolute -top-4 left-[18%] w-4 h-4 text-rose-deep/70 sparkle-twinkle pointer-events-none"
+              aria-hidden
+            />
+            <Sparkles
+              className="absolute top-2 right-[14%] w-3 h-3 text-rose-primary sparkle-twinkle pointer-events-none"
+              style={{ animationDelay: "0.7s" }}
+              aria-hidden
+            />
+            <Sparkles
+              className="absolute -bottom-3 left-[40%] w-3.5 h-3.5 text-rose-deep/60 sparkle-twinkle pointer-events-none"
+              style={{ animationDelay: "1.3s" }}
+              aria-hidden
+            />
+            <Sparkles
+              className="absolute -bottom-2 right-[30%] w-2.5 h-2.5 text-rose-primary/80 sparkle-twinkle pointer-events-none"
+              style={{ animationDelay: "1.9s" }}
+              aria-hidden
+            />
+
             <img
               src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/logo%20solo%20(1).png"
               alt="Cancerianas"
-              className="h-14 md:h-20 w-auto object-contain drop-shadow-md shrink-0"
+              className="crab-rocking h-14 md:h-20 w-auto object-contain drop-shadow-md shrink-0"
             />
             <p
-              className="font-display font-black italic tracking-tight leading-none drop-shadow-sm"
-              style={{
-                fontSize: "clamp(1.6rem, 9vw, 4rem)",
-                background: "linear-gradient(135deg, #F06292 0%, #EC407A 50%, #FF80AB 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
+              className="bienvenida-text font-display font-black italic tracking-tight leading-none drop-shadow-sm"
+              style={{ fontSize: "clamp(1.6rem, 9vw, 4rem)" }}
             >
               BIENVENIDA
             </p>
@@ -100,17 +115,42 @@ async function HomeOpen() {
           </div>
 
           {/* Texto hero — siempre centrado horizontalmente */}
-          <div className="max-w-2xl mx-auto space-y-6 text-center">
-            <h1 className="font-display text-[clamp(2rem,9vw,5rem)] md:text-7xl leading-[1.05] text-ink-primary drop-shadow-sm font-black md:whitespace-nowrap">
+          <div className="relative max-w-2xl mx-auto space-y-6 text-center">
+            {/* Glow suave detrás del título */}
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-rose-pastel/50 blur-3xl rounded-full pointer-events-none" aria-hidden />
+
+            <h1 className="relative font-display text-[clamp(2rem,9vw,5rem)] md:text-7xl leading-[1.05] text-ink-primary drop-shadow-sm font-black md:whitespace-nowrap">
               TU LUGAR,
-              <span className="block italic text-rose-deep">NUESTRO LUGAR.</span>
+              <span className="block italic text-rose-deep relative">
+                NUESTRO LUGAR.
+                {/* Subrayado hecho a mano */}
+                <svg
+                  className="absolute -bottom-1 md:-bottom-2 left-1/2 -translate-x-1/2 w-[88%] h-3 md:h-4 pointer-events-none"
+                  viewBox="0 0 300 12"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M4,8 Q80,2 150,5 T296,7"
+                    stroke="#FF8FA3"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    className="hero-underline-path"
+                  />
+                </svg>
+              </span>
             </h1>
-            <p className="text-lg text-ink-secondary leading-relaxed max-w-md mx-auto">
+
+            <p className="text-base md:text-lg text-ink-secondary leading-relaxed max-w-md mx-auto">
               Un lugar para todas, para que todo sea más fácil y más cómodo. Acá van a estar desde las dinámicas hasta los envíos. Acá va a estar todo.
             </p>
+
             <div className="flex flex-wrap gap-3 justify-center">
-              <Link href="/shop" className="btn-primary">
-                Ver tienda <ArrowRight className="w-4 h-4" />
+              <Link href="/shop" className="group relative btn-primary">
+                <span className="absolute inset-0 -z-10 rounded-full bg-rose-primary/40 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden />
+                Ver tienda
+                <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               {activeLive && (
                 <Link href={`/live/${activeLive.id}`} className="btn-secondary">
@@ -119,13 +159,18 @@ async function HomeOpen() {
                 </Link>
               )}
             </div>
-            <div className="flex gap-6 pt-2 text-sm text-ink-secondary justify-center">
-              <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-rose-deep" /> Envíos a todo el país
-              </div>
-              <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-rose-deep" /> Hecho con amor
-              </div>
+
+            {/* Trust chips */}
+            <div className="flex flex-wrap gap-2 justify-center pt-1">
+              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Truck className="w-3.5 h-3.5 text-rose-deep" /> Envíos a todo el país
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Heart className="w-3.5 h-3.5 text-rose-deep" /> Hecho con amor
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Sparkles className="w-3.5 h-3.5 text-rose-deep" /> Drops exclusivos
+              </span>
             </div>
           </div>
 
