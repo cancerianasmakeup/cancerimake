@@ -235,7 +235,7 @@ export default function ShopBrowser({
                   key={c.id}
                   href={`/category/${c.slug}`}
                   aria-label={c.name}
-                  className="relative aspect-square rounded-3xl overflow-hidden shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
+                  className="category-glow relative aspect-square rounded-3xl shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
                   style={
                     c.image_url
                       ? {

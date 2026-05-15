@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles, Heart, Truck } from "lucide-react";
+import { ArrowRight, Sparkles, Heart, Truck, ShoppingBag } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -204,33 +204,118 @@ async function HomeOpen() {
 
       {/* LIVE TEASER */}
       <section className="max-w-6xl mx-auto px-4 mt-10 mb-10">
-        <div className="rounded-[2.5rem] bg-gradient-to-br from-rose-deep via-rose-primary to-rose-medium p-10 md:p-16 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 text-[20rem] opacity-10 -mr-20 -mt-20 leading-none">🌸</div>
-          <div className="relative max-w-2xl">
-            <span className="badge-live mb-4">
-              {activeLive ? "EN VIVO AHORA" : "PRÓXIMAMENTE"}
-            </span>
-            <h2 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
-              Las dinámicas en vivo más esperadas.
-            </h2>
-            <p className="text-white/90 text-lg mb-8">
-              Cápsulas, sobres, bolsitas. Mientras hago el LIVE en TikTok, vos comprás acá con lugar reservado y pago seguro.
-            </p>
-            <Link
-              href={activeLive ? `/live/${activeLive.id}` : "/live"}
-              className="inline-flex items-center gap-2 bg-white text-rose-deep px-8 py-4 rounded-full font-bold hover:scale-105 transition-transform"
-            >
-              {activeLive ? "Entrar al LIVE" : "Ver próximos eventos"}
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+        <div className="rounded-[2.5rem] bg-gradient-to-br from-rose-deep via-rose-primary to-rose-medium p-6 md:p-12 text-white relative overflow-hidden">
+          {/* Decorativos: sparkles + bubbles flotantes */}
+          <div className="absolute -top-16 -right-16 w-72 h-72 bg-white/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-rose-deep/40 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-6 right-1/4 w-2 h-2 bg-white rounded-full opacity-60 animate-pulse pointer-events-none" />
+          <div className="absolute bottom-10 right-1/3 w-1.5 h-1.5 bg-white rounded-full opacity-50 animate-pulse pointer-events-none" style={{ animationDelay: "0.6s" }} />
+          <div className="absolute top-1/3 right-12 w-3 h-3 bg-white rounded-full opacity-40 animate-pulse pointer-events-none" style={{ animationDelay: "1.1s" }} />
+
+          <div className="relative grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+
+            {/* Columna texto */}
+            <div>
+              {/* Badge LIVE con pulse ring */}
+              <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.18em] mb-5">
+                <span className="relative flex w-2.5 h-2.5">
+                  <span className={`absolute inset-0 rounded-full bg-white ${activeLive ? "animate-ping" : ""} opacity-75`} />
+                  <span className="relative w-2.5 h-2.5 rounded-full bg-white" />
+                </span>
+                {activeLive ? "EN VIVO AHORA" : "PRÓXIMAMENTE"}
+              </div>
+
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 leading-[1.05] font-black">
+                Las dinámicas en vivo <span className="italic font-normal">más esperadas.</span>
+              </h2>
+              <p className="text-white/90 text-base md:text-lg mb-6 leading-relaxed max-w-lg">
+                Cápsulas, sobres, bolsitas. Mientras hago el LIVE en TikTok, vos comprás acá con lugar reservado y pago seguro.
+              </p>
+
+              {/* Mini-features */}
+              <ul className="flex flex-wrap gap-2 mb-7">
+                <li className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/25 px-3 py-1.5 rounded-full text-xs md:text-sm font-semibold">
+                  <ShoppingBag className="w-3.5 h-3.5" /> Lugar reservado
+                </li>
+                <li className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/25 px-3 py-1.5 rounded-full text-xs md:text-sm font-semibold">
+                  <Truck className="w-3.5 h-3.5" /> Te llega a casa
+                </li>
+                <li className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/25 px-3 py-1.5 rounded-full text-xs md:text-sm font-semibold">
+                  <Heart className="w-3.5 h-3.5" /> Pago seguro
+                </li>
+              </ul>
+
+              <Link
+                href={activeLive ? `/live/${activeLive.id}` : "/live"}
+                className="inline-flex items-center gap-2 bg-white text-rose-deep px-7 py-3.5 rounded-full font-bold shadow-lg hover:scale-105 hover:shadow-2xl transition-all"
+              >
+                {activeLive ? "Entrar al LIVE" : "Ver próximos eventos"}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Columna visual — phone mockup. Sólo desktop. */}
+            <div className="hidden md:flex justify-center items-center">
+              <div className="relative w-[260px] h-[460px] rounded-[2.5rem] bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a] p-3 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] rotate-[6deg] hover:rotate-0 transition-transform duration-500">
+                {/* Notch */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-10" />
+                {/* Pantalla */}
+                <div className="w-full h-full rounded-[2rem] bg-gradient-to-br from-rose-deep via-rose-primary to-rose-medium overflow-hidden relative">
+                  {/* Bg decorativo en la pantalla */}
+                  <div className="absolute -top-10 -left-10 w-32 h-32 bg-white/20 rounded-full blur-2xl" />
+                  <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-rose-deep/60 rounded-full blur-2xl" />
+
+                  {/* Contenido del phone */}
+                  <div className="relative h-full flex flex-col justify-between p-4 pt-8 text-white">
+                    {/* Top: LIVE badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center gap-1.5 bg-rose-deep px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider shadow-md">
+                        <span className="relative flex w-1.5 h-1.5">
+                          <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-75" />
+                          <span className="relative w-1.5 h-1.5 rounded-full bg-white" />
+                        </span>
+                        LIVE
+                      </div>
+                      <div className="text-[10px] font-bold bg-black/40 backdrop-blur px-2 py-0.5 rounded">
+                        👀 1.2K
+                      </div>
+                    </div>
+
+                    {/* Middle: producto + precio */}
+                    <div className="flex flex-col items-center text-center">
+                      <div className="text-7xl mb-2 drop-shadow-2xl">🎁</div>
+                      <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-4 py-3 shadow-xl">
+                        <p className="text-[10px] uppercase tracking-wider opacity-80">Cápsula del día</p>
+                        <p className="font-black text-xl mt-0.5">$7.000</p>
+                      </div>
+                    </div>
+
+                    {/* Bottom: chat bubbles */}
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] bg-black/30 backdrop-blur px-2.5 py-1 rounded-full inline-block">
+                        <strong className="text-rose-pastel">@maru</strong> me la llevo!! 🌸
+                      </div>
+                      <div className="text-[10px] bg-black/30 backdrop-blur px-2.5 py-1 rounded-full inline-block">
+                        <strong className="text-rose-pastel">@sofi</strong> reservame una porfa
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 bg-white/15 backdrop-blur border border-white/25 rounded-full px-3 py-1.5">
+                        <span className="text-[10px] opacity-70 flex-1">Escribir un comentario...</span>
+                        <Heart className="w-3.5 h-3.5 fill-white" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
       {/* CATEGORÍAS */}
       <section className="max-w-6xl mx-auto px-4 mt-12 mb-16">
-        <h2 className="font-sans text-2xl font-black tracking-tight mb-8 text-center uppercase">
-          <span className="text-ink-primary">Elegí lo que </span><span className="text-rose-deep">buscas</span>
+        <h2 className="font-sans text-xl md:text-2xl font-black tracking-tight mb-8 text-center uppercase leading-tight">
+          <span className="text-ink-primary">Elegí la categoría del producto que </span><span className="text-rose-deep">necesitás</span>
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
           {(categories as Category[] | null)?.map((cat) => {
@@ -241,7 +326,7 @@ async function HomeOpen() {
                 key={cat.id}
                 href={`/category/${cat.slug}`}
                 aria-label={cat.name}
-                className="relative aspect-square rounded-3xl overflow-hidden shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
+                className="category-glow relative aspect-square rounded-3xl shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
                 style={
                   cat.image_url
                     ? {

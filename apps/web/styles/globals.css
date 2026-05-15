@@ -105,6 +105,70 @@
   }
 }
 
+/* Glow rotativo premium para cards de categoría.
+   Dos capas: un haz nítido de borde con hotspot blanco + halo difuso amplio que lo persigue.
+   Aplicar la clase .category-glow al <Link> de cada card (y NO usar overflow-hidden ahí). */
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes glow-rotate {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+.category-glow {
+  position: relative;
+  isolation: isolate;
+  transition: filter 0.4s ease, transform 0.3s ease;
+}
+/* Haz principal: anillo de 2.5px con hotspot blanco brillante + acento magenta */
+.category-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 2.5px;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 0deg,
+    rgba(255, 229, 236, 0.4) 25deg,
+    #FFB3C6 55deg,
+    #FFFFFF 82deg,
+    #FF3D7F 90deg,
+    #FF6B9B 105deg,
+    #FF8FA3 135deg,
+    rgba(255, 179, 198, 0.4) 170deg,
+    transparent 210deg,
+    /* Segundo destello, más sutil, opuesto */
+    rgba(255, 179, 198, 0.3) 250deg,
+    rgba(255, 143, 163, 0.7) 270deg,
+    rgba(255, 179, 198, 0.3) 290deg,
+    transparent 330deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: glow-rotate 4s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+/* Hover: el haz se intensifica */
+.category-glow:hover::before {
+  filter: brightness(1.25) saturate(1.15);
+}
+@media (prefers-reduced-motion: reduce) {
+  .category-glow::before {
+    animation: none;
+  }
+}
+
 /* Cursor decorativo con cangrejito (desktop fino) — se monta vía <CustomCursor />.
    En mobile/touch los elementos quedan ocultos por display:none. */
 .cancer-cursor {
