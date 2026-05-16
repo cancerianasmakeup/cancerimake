@@ -43,7 +43,7 @@ async function ShopContent({
     await Promise.all([
       supabase
         .from("products")
-        .select("*")
+        .select("*, variants:product_variants(id)")
         .eq("status", "active")
         .eq("is_featured", true)
         .order("created_at", { ascending: false })
@@ -55,7 +55,7 @@ async function ShopContent({
         .order("display_order"),
       supabase
         .from("products")
-        .select("*, category:categories(name, slug)")
+        .select("*, category:categories(name, slug), variants:product_variants(id)")
         .eq("status", "active")
         .order("created_at", { ascending: false }),
     ]);

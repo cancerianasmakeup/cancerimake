@@ -39,7 +39,7 @@ async function CategoryContent({
 
   const { data: products } = await supabase
     .from("products")
-    .select("*")
+    .select("*, variants:product_variants(id)")
     .eq("category_id", category.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });

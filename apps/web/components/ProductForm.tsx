@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -31,7 +31,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [uploadingVariantKey, setUploadingVariantKey] = useState<string | null>(null);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
-  const [form, setForm] = useState<Partial<Product>>({
+  // Drag & drop reorder de imágenes
+  const [dragImgIdx, setDragImgIdx] = useState<number | null>(null);
+  const [overImgIdx, setOverImgIdx] = useState<number | null>(null);
+  const [form, setForm] = useState<Partial<Product> & { videos?: string[] }>({
     name: "",
     slug: "",
     description: "",
@@ -42,6 +45,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
     stock: 0,
     sku: "",
     images: [],
+    videos: [],
     status: "draft",
     is_featured: false,
   });
@@ -117,6 +121,22 @@ export default function ProductForm({ productId }: { productId?: string }) {
     } finally {
       setUploading(false);
     }
+  }
+
+  function reorderImage(from: number, to: number) {
+    if (from === to) return;
+    const arr = [...(form.images ?? [])];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setForm({ ...form, images: arr });
+  }
+
+  function moveImage(i: number, delta: number) {
+    const arr = [...(form.images ?? [])];
+    const target = i + delta;
+    if (target < 0 || target >= arr.length) return;
+    [arr[i], arr[target]] = [arr[target], arr[i]];
+    setForm({ ...form, images: arr });
   }
 
   // ===== VARIANT HELPERS =====
@@ -223,6 +243,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
         compare_price: form.compare_price ? Number(form.compare_price) : null,
         cost: Number(form.cost ?? 0),
         stock: Number(form.stock),
+        videos: form.videos ?? [],
       };
 
       if (productId) {
@@ -307,20 +328,99 @@ export default function ProductForm({ productId }: { productId?: string }) {
           </div>
 
           <div className="card space-y-4">
-            <h3 className="font-display text-lg">Imágenes</h3>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="font-display text-lg">Imágenes</h3>
+              {(form.images ?? []).length > 1 && (
+                <p className="text-xs text-ink-soft inline-flex items-center gap-1">
+                  <GripVertical className="w-3.5 h-3.5" /> Arrastrá para reordenar — la #1 es la portada
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-3">
-              {(form.images ?? []).map((img, i) => (
-                <div key={i} className="relative aspect-square rounded-2xl overflow-hidden bg-rose-pastel group">
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, images: form.images!.filter((_, idx) => idx !== i) })}
-                    className="absolute top-2 right-2 bg-error text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+              {(form.images ?? []).map((img, i) => {
+                const isDragging = dragImgIdx === i;
+                const isOver = overImgIdx === i && dragImgIdx !== null && dragImgIdx !== i;
+                return (
+                  <div
+                    key={img + i}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragImgIdx(i);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragEnd={() => {
+                      setDragImgIdx(null);
+                      setOverImgIdx(null);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (overImgIdx !== i) setOverImgIdx(i);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragImgIdx !== null) reorderImage(dragImgIdx, i);
+                      setDragImgIdx(null);
+                      setOverImgIdx(null);
+                    }}
+                    className={`relative aspect-square rounded-2xl overflow-hidden bg-rose-pastel group cursor-grab active:cursor-grabbing transition-all ${
+                      isDragging ? "opacity-40 scale-95" : ""
+                    } ${isOver ? "ring-2 ring-rose-deep ring-offset-2" : ""}`}
                   >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+                    <img src={img} alt="" className="w-full h-full object-cover pointer-events-none" />
+
+                    {/* Badge de posición (#1 = portada) */}
+                    <span
+                      className={`absolute top-2 left-2 text-white text-[11px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-md ${
+                        i === 0 ? "bg-rose-deep" : "bg-ink-primary/80"
+                      }`}
+                      title={i === 0 ? "Portada" : `Posición ${i + 1}`}
+                    >
+                      {i + 1}
+                    </span>
+
+                    {/* Grip handle (visual hint) */}
+                    <span className="absolute top-2 right-9 bg-white/90 backdrop-blur p-1 rounded-md text-ink-soft opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                      <GripVertical className="w-3 h-3" />
+                    </span>
+
+                    {/* Mobile-friendly arrows */}
+                    <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); moveImage(i, -1); }}
+                          className="bg-white/95 backdrop-blur text-ink-primary w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shadow hover:bg-rose-whisper"
+                          title="Mover atrás"
+                          aria-label="Mover atrás"
+                        >
+                          ←
+                        </button>
+                      )}
+                      {i < (form.images?.length ?? 0) - 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); moveImage(i, +1); }}
+                          className="bg-white/95 backdrop-blur text-ink-primary w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shadow hover:bg-rose-whisper"
+                          title="Mover adelante"
+                          aria-label="Mover adelante"
+                        >
+                          →
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, images: form.images!.filter((_, idx) => idx !== i) })}
+                      className="absolute top-2 right-2 bg-error text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                      title="Quitar imagen"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
               <label className="aspect-square rounded-2xl border-2 border-dashed border-rose-medium flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-rose-whisper">
                 <ImageIcon className="w-6 h-6 text-rose-deep" />
                 <span className="text-xs text-ink-soft">{uploading ? "Subiendo..." : "Agregar"}</span>
@@ -339,6 +439,65 @@ export default function ProductForm({ productId }: { productId?: string }) {
                   const url = (e.target as HTMLInputElement).value;
                   if (url) {
                     setForm({ ...form, images: [...(form.images ?? []), url] });
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }
+              }}
+            />
+          </div>
+
+          {/* Videos */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2">
+              <VideoIcon className="w-5 h-5 text-rose-deep" />
+              <h3 className="font-display text-lg">Videos del producto</h3>
+            </div>
+            <p className="text-xs text-ink-soft">
+              Pegá la URL de un video (.mp4 / .webm subido a R2, Cloudinary, etc).
+              Aparece en el carrusel del detalle del producto.
+            </p>
+
+            {(form.videos ?? []).length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {(form.videos ?? []).map((vid, i) => (
+                  <div key={i} className="relative aspect-square rounded-2xl overflow-hidden bg-ink-primary/90 group">
+                    <video
+                      src={vid}
+                      className="w-full h-full object-cover"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+                      <Play className="w-7 h-7 text-white fill-white" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          videos: (form.videos ?? []).filter((_, idx) => idx !== i),
+                        })
+                      }
+                      className="absolute top-2 right-2 bg-error text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                      aria-label="Quitar video"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <input
+              className="input text-sm"
+              placeholder="https://… .mp4 (pegá la URL y dale Enter)"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const url = (e.target as HTMLInputElement).value.trim();
+                  if (url) {
+                    setForm({ ...form, videos: [...(form.videos ?? []), url] });
                     (e.target as HTMLInputElement).value = "";
                   }
                 }

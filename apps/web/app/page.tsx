@@ -32,7 +32,7 @@ async function HomeOpen() {
   const [{ data: featured }, { data: categories }, { data: liveEvents }] = await Promise.all([
     supabase
       .from("products")
-      .select("*")
+      .select("*, variants:product_variants(id)")
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(50),
@@ -96,11 +96,14 @@ async function HomeOpen() {
               aria-hidden
             />
 
-            <img
-              src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/logo%20solo%20(1).png"
-              alt="Cancerianas"
-              className="crab-rocking h-14 md:h-20 w-auto object-contain drop-shadow-md shrink-0"
-            />
+            <span
+              role="img"
+              aria-label="Cangrejito"
+              className="crab-rocking inline-block text-5xl md:text-7xl leading-none shrink-0 drop-shadow-md"
+              style={{ filter: "drop-shadow(0 4px 8px rgba(230,107,133,0.25))" }}
+            >
+              🦀
+            </span>
             <p
               className="bienvenida-text font-display font-black italic tracking-tight leading-none drop-shadow-sm"
               style={{ fontSize: "clamp(1.6rem, 9vw, 4rem)" }}
