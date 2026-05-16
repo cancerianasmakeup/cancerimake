@@ -50,6 +50,13 @@ export default function ProductForm({ productId }: { productId?: string }) {
     is_featured: false,
   });
 
+  const variantsActive = hasVariants && variants.length > 0;
+  const variantsStockTotal = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  // Cuando hay variantes activas, el stock general es derivado (suma de variantes).
+  // No lo guardamos en form.stock para evitar carreras con la carga inicial; se calcula
+  // al renderizar el input y al armar el payload en handleSubmit.
+  const displayedStock = variantsActive ? variantsStockTotal : Number(form.stock ?? 0);
+
   useEffect(() => {
     supabase.from("categories").select("*").order("display_order").then(({ data }) => {
       setCategories((data as Category[]) ?? []);
@@ -242,7 +249,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
         price: Number(form.price),
         compare_price: form.compare_price ? Number(form.compare_price) : null,
         cost: Number(form.cost ?? 0),
-        stock: Number(form.stock),
+        stock: variantsActive ? variantsStockTotal : Number(form.stock ?? 0),
         videos: form.videos ?? [],
       };
 
@@ -570,10 +577,18 @@ export default function ProductForm({ productId }: { productId?: string }) {
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Stock</label>
               <input
                 type="number"
-                className="input"
-                value={form.stock ?? 0}
+                className={`input ${variantsActive ? "bg-rose-pastel/40 cursor-not-allowed" : ""}`}
+                value={displayedStock}
                 onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+                readOnly={variantsActive}
+                disabled={variantsActive}
+                title={variantsActive ? "Con variantes activas, el stock se calcula automáticamente sumando el stock de cada variante." : undefined}
               />
+              {variantsActive && (
+                <p className="text-xs text-ink-soft mt-1">
+                  Auto: suma de {variants.length} variante{variants.length !== 1 ? "s" : ""}. Editá el stock en cada variante abajo.
+                </p>
+              )}
             </div>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Precio de costo (ARS)</label>
