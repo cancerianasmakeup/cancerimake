@@ -4,11 +4,13 @@ import "server-only";
 import { createSupabaseServer } from "./supabase-server";
 import {
   DEFAULT_BRAND,
+  DEFAULT_QUEUE,
   type BrandInfo,
   type Analytics,
   type Seo,
   type Maintenance,
   type ShippingExtras,
+  type QueueSettings,
 } from "./site-settings-types";
 
 export * from "./site-settings-types";
@@ -34,3 +36,4 @@ export const getAnalytics  = () => getSetting<Analytics>("analytics", { ga4_id: 
 export const getSeo        = () => getSetting<Seo>("seo", { meta_title: "", meta_description: "", og_image_url: "", keywords: "" });
 export const getMaintenance = () => getSetting<Maintenance>("maintenance", { enabled: false, message: "", allow_admins: true });
 export const getShippingExtras = () => getSetting<ShippingExtras>("shipping_extras", { free_shipping_threshold: 0, recargo_porcentaje: 0, fee_fijo: 0, note_for_customer: "" });
+export const getQueueSettings = () => getSetting<QueueSettings>("queue", DEFAULT_QUEUE);

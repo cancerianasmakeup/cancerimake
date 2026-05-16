@@ -55,3 +55,36 @@ export type ShippingExtras = {
   fee_fijo: number;
   note_for_customer: string;
 };
+
+/**
+ * Cola virtual / "fake queue" — popup que simula tráfico alto para dar urgencia
+ * (social proof). Disparado por presencia real (Supabase Realtime). El número de
+ * "gente adelante" se calcula como max(viewers * multiplier, min_offset).
+ *
+ * IMPORTANTE: si lo dejás con multiplier alto sin tener tráfico real, queda
+ * obvio que es ficticio (siempre el mismo número arrancando). El sistema funciona
+ * mejor en picos donde sumás un boost al número real.
+ */
+export type QueueSettings = {
+  /** Si la cola está activa en general. Toggle on/off rápido. */
+  enabled: boolean;
+  /** Mínimo de viewers concurrentes para gatillar la cola. */
+  threshold: number;
+  /** Multiplica los viewers reales para mostrar al usuario. 1 = honesto, 5 = inflado. */
+  multiplier: number;
+  /** Piso mínimo de "gente adelante" al arrancar (si viewers*multiplier es bajo). */
+  min_offset: number;
+  /** Duración total de la cola antes de auto-cerrar, en segundos. */
+  duration_sec: number;
+  /** Páginas donde se dispara. Si está vacío, se muestra en todas. */
+  scope: ("shop" | "category" | "product" | "checkout")[];
+};
+
+export const DEFAULT_QUEUE: QueueSettings = {
+  enabled: false,
+  threshold: 15,
+  multiplier: 5,
+  min_offset: 40,
+  duration_sec: 240,
+  scope: ["shop", "category", "product"],
+};

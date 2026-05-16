@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AddToCartButton from "@/components/AddToCartButton";
 import StoreGate from "@/components/StoreGate";
+import QueueGateServer from "@/components/QueueGateServer";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
 import ProductGallery from "@/components/ProductGallery";
 import RelatedProducts from "@/components/RelatedProducts";
@@ -19,6 +20,7 @@ export default async function ProductPage({
 }) {
   return (
     <StoreGate>
+      <QueueGateServer page="product" />
       <ProductContent params={params} />
     </StoreGate>
   );

@@ -7,6 +7,7 @@ import ShopBrowser from "@/components/ShopBrowser";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import StoreGate from "@/components/StoreGate";
+import QueueGateServer from "@/components/QueueGateServer";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import type { Product, Category } from "@cancerianas/shared";
@@ -26,6 +27,7 @@ export default async function ShopPage({
 }) {
   return (
     <StoreGate>
+      <QueueGateServer page="shop" />
       <ShopContent searchParams={searchParams} />
     </StoreGate>
   );

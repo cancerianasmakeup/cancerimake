@@ -4,9 +4,11 @@ import { useState, useMemo } from "react";
 import {
   Save, Truck, AlertCircle, CheckCircle2, CreditCard, Building2, MapPin,
   Sparkles as BrandIcon, BarChart3, Search, PaintBucket, Power, Percent,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { DEFAULT_QUEUE, type QueueSettings } from "@/lib/site-settings-types";
 
 type TabKey =
   | "brand"
@@ -16,6 +18,7 @@ type TabKey =
   | "appearance"
   | "analytics"
   | "seo"
+  | "queue"
   | "operation";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -26,6 +29,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "appearance",  label: "Apariencia",         icon: PaintBucket },
   { key: "analytics",   label: "Analytics",          icon: BarChart3 },
   { key: "seo",         label: "SEO",                icon: Search },
+  { key: "queue",       label: "Cola virtual",       icon: Users },
   { key: "operation",   label: "Operación / tienda", icon: Power },
 ];
 
@@ -42,6 +46,7 @@ export default function SettingsForm({ initial }: { initial: Record<string, any>
   const [analytics,   setAnalytics]   = useState(initial.analytics        ?? {});
   const [seo,         setSeo]         = useState(initial.seo              ?? {});
   const [maintenance, setMaintenance] = useState(initial.maintenance      ?? {});
+  const [queue,       setQueue]       = useState<QueueSettings>({ ...DEFAULT_QUEUE, ...(initial.queue ?? {}) });
   const [andreaniStatus] = useState(initial.andreani_status ?? { mode: "mock" });
 
   const [tab, setTab] = useState<TabKey>("brand");
@@ -51,14 +56,14 @@ export default function SettingsForm({ initial }: { initial: Record<string, any>
   const currentSnapshot = JSON.stringify({
     brand_info: brand, payment_methods: payments, shipping_methods: shipping,
     shipping_origin: origin, shipping_extras: extras, appearance, analytics,
-    seo, maintenance,
+    seo, maintenance, queue,
   });
   const dirty = useMemo(() => {
     // Comparación grosera key por key — si cambia algún campo, hay cambios.
     return Object.entries({
       brand_info: brand, payment_methods: payments, shipping_methods: shipping,
       shipping_origin: origin, shipping_extras: extras, appearance, analytics,
-      seo, maintenance,
+      seo, maintenance, queue,
     }).some(([k, v]) => JSON.stringify((initial as any)[k] ?? {}) !== JSON.stringify(v));
   }, [currentSnapshot]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -78,6 +83,7 @@ export default function SettingsForm({ initial }: { initial: Record<string, any>
       { key: "analytics",        value: analytics },
       { key: "seo",              value: seo },
       { key: "maintenance",      value: maintenance },
+      { key: "queue",            value: queue },
     ];
     const { error } = await supabase
       .from("site_settings")
@@ -126,6 +132,7 @@ export default function SettingsForm({ initial }: { initial: Record<string, any>
         {tab === "appearance" && <TabAppearance  appearance={appearance} set={(k,v)=>up(setAppearance,k,v)} />}
         {tab === "analytics"  && <TabAnalytics   analytics={analytics} set={(k,v)=>up(setAnalytics,k,v)} />}
         {tab === "seo"        && <TabSeo         seo={seo}            set={(k,v)=>up(setSeo,k,v)} />}
+        {tab === "queue"      && <TabQueue       queue={queue}        set={(k,v)=>up(setQueue,k,v)} />}
         {tab === "operation"  && <TabOperation   maintenance={maintenance} set={(k,v)=>up(setMaintenance,k,v)} />}
       </div>
 
@@ -531,6 +538,114 @@ function TabOperation({ maintenance, set }: { maintenance: any; set: (k: string,
 }
 
 // ============================================================
+// TAB: COLA VIRTUAL
+// ============================================================
+function TabQueue({
+  queue,
+  set,
+}: {
+  queue: QueueSettings;
+  set: (k: string, v: any) => void;
+}) {
+  const scope: QueueSettings["scope"] = queue.scope ?? [];
+  function toggleScope(key: QueueSettings["scope"][number]) {
+    const next = scope.includes(key) ? scope.filter((s) => s !== key) : [...scope, key];
+    set("scope", next);
+  }
+
+  return (
+    <>
+      <Card title="Cola virtual / urgencia" icon={<Users className="w-4 h-4" />}>
+        <p className="text-xs text-ink-soft -mt-1 mb-3">
+          Mostrá un popup tipo "estás en la cola" con un cangrejito 🦀 corriendo, cuando hay mucha gente en el shop. Sirve para generar urgencia en drops.
+        </p>
+
+        <Toggle
+          label="Activar cola virtual"
+          desc="Cuando llega al umbral, los clientes ven el popup una vez por sesión."
+          checked={!!queue.enabled}
+          onChange={(v) => set("enabled", v)}
+        >
+          <div className="space-y-4 pt-2">
+            <Divider title="Umbral y números" />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <NumberField
+                label="Viewers concurrentes para gatillar"
+                value={queue.threshold}
+                min={2}
+                onChange={(v) => set("threshold", v)}
+                help="Cantidad mínima de personas viendo el shop al mismo tiempo (real-time) para activar el popup."
+              />
+              <NumberField
+                label="Multiplicador"
+                value={queue.multiplier}
+                min={1}
+                step={0.5}
+                onChange={(v) => set("multiplier", v)}
+                help='Multiplica los viewers reales para mostrar el número "gente adelante". 1 = honesto, 5 = inflado.'
+              />
+              <NumberField
+                label="Piso mínimo (offset)"
+                value={queue.min_offset}
+                min={0}
+                onChange={(v) => set("min_offset", v)}
+                help="Si viewers × multiplicador queda bajo, se usa este número como mínimo (ej: 40 ⇒ nunca arranca con menos de 40)."
+              />
+              <NumberField
+                label="Duración de la cola (segundos)"
+                value={queue.duration_sec}
+                min={30}
+                onChange={(v) => set("duration_sec", v)}
+                help="Cuánto dura el popup desde que aparece hasta que se cierra solo. Recomendado: 180-300s."
+              />
+            </div>
+
+            <Divider title="Páginas donde se dispara" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(["shop", "category", "product", "checkout"] as const).map((s) => {
+                const active = scope.includes(s);
+                const labels: Record<typeof s, string> = {
+                  shop: "Tienda",
+                  category: "Categorías",
+                  product: "Producto",
+                  checkout: "Checkout",
+                };
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleScope(s)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium border transition ${
+                      active
+                        ? "bg-rose-deep text-white border-rose-deep"
+                        : "bg-white text-ink-secondary border-rose-pastel hover:bg-rose-whisper"
+                    }`}
+                  >
+                    {labels[s]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-ink-soft">
+              Marcá las páginas donde querés que se dispare. El popup aparece <strong>una sola vez por sesión</strong> de navegación.
+            </p>
+          </div>
+        </Toggle>
+      </Card>
+
+      <Card title="⚠️ Advertencia legal y de marca" icon={<AlertCircle className="w-4 h-4" />} variant="warning">
+        <p className="text-xs text-ink-soft leading-relaxed">
+          Inflar el número de gente comprando puede caer bajo <strong>"publicidad engañosa"</strong> en la Ley de Defensa del Consumidor (24.240) en Argentina. Si una clienta saca una captura comparando con la realidad y lo publica en redes, el daño a la marca puede ser fuerte.
+        </p>
+        <p className="text-xs text-ink-soft leading-relaxed mt-2">
+          <strong>Recomendación:</strong> mantené el <em>multiplicador en 1-2</em> en el día a día (honesto + algo de buffer) y subilo solo durante drops grandes donde realmente hay tráfico alto. Eso te da el efecto urgencia sin mentir a fondo.
+        </p>
+      </Card>
+    </>
+  );
+}
+
+// ============================================================
 // COMPONENTES PRIMITIVOS
 // ============================================================
 
@@ -639,6 +754,35 @@ function Field({
         placeholder={placeholder}
       />
       {hint && <p className="text-[10px] text-ink-soft mt-1 leading-snug">{hint}</p>}
+    </div>
+  );
+}
+
+function NumberField({
+  label, value, onChange, min, step = 1, help,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  step?: number;
+  help?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-ink-secondary mb-1">{label}</label>
+      <input
+        className="input !h-10 !text-sm w-full"
+        type="number"
+        value={Number.isFinite(value) ? value : 0}
+        min={min}
+        step={step}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          if (Number.isFinite(v)) onChange(v);
+        }}
+      />
+      {help && <p className="text-[10px] text-ink-soft mt-1 leading-snug">{help}</p>}
     </div>
   );
 }

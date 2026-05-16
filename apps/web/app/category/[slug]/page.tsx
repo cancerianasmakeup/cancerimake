@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import StoreGate from "@/components/StoreGate";
+import QueueGateServer from "@/components/QueueGateServer";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
 import type { Product, Category } from "@cancerianas/shared";
 
@@ -16,6 +17,7 @@ export default async function CategoryPage({
 }) {
   return (
     <StoreGate>
+      <QueueGateServer page="category" />
       <CategoryContent params={params} />
     </StoreGate>
   );
