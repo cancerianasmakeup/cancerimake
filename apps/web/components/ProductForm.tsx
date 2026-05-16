@@ -26,6 +26,8 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const confirm = useConfirm();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [primaryCategoryId, setPrimaryCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingVariantKey, setUploadingVariantKey] = useState<string | null>(null);
@@ -66,6 +68,18 @@ export default function ProductForm({ productId }: { productId?: string }) {
       supabase.from("products").select("*").eq("id", productId).single().then(({ data }) => {
         if (data) setForm(data);
       });
+
+      supabase
+        .from("product_categories")
+        .select("category_id, is_primary")
+        .eq("product_id", productId)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setSelectedCategoryIds(data.map((r) => r.category_id));
+            const primary = data.find((r) => r.is_primary);
+            setPrimaryCategoryId(primary?.category_id ?? data[0].category_id);
+          }
+        });
 
       supabase
         .from("product_variants")
@@ -245,6 +259,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
     try {
       const payload = {
         ...form,
+        category_id: primaryCategoryId, // mantenido por backward-compat (también lo sincroniza el trigger)
         slug: form.slug || generateSlug(form.name!),
         price: Number(form.price),
         compare_price: form.compare_price ? Number(form.compare_price) : null,
@@ -253,15 +268,34 @@ export default function ProductForm({ productId }: { productId?: string }) {
         videos: form.videos ?? [],
       };
 
+      let savedId = productId;
       if (productId) {
         const { error } = await supabase.from("products").update(payload).eq("id", productId);
         if (error) throw error;
-        toast.success("Producto actualizado 🌸");
       } else {
         const { data, error } = await supabase.from("products").insert(payload).select().single();
         if (error) throw error;
+        savedId = data.id;
+      }
+
+      if (savedId) {
+        await supabase.from("product_categories").delete().eq("product_id", savedId);
+        if (selectedCategoryIds.length > 0) {
+          const rows = selectedCategoryIds.map((cid) => ({
+            product_id: savedId!,
+            category_id: cid,
+            is_primary: cid === primaryCategoryId,
+          }));
+          const { error: pcErr } = await supabase.from("product_categories").insert(rows);
+          if (pcErr) throw pcErr;
+        }
+      }
+
+      if (productId) {
+        toast.success("Producto actualizado 🌸");
+      } else {
         toast.success("Producto creado 🌸");
-        router.replace(`/admin/products/${data.id}`);
+        router.replace(`/admin/products/${savedId}`);
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -528,17 +562,65 @@ export default function ProductForm({ productId }: { productId?: string }) {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold text-ink-primary mb-1 block">Categoría</label>
-              <select
-                className="input"
-                value={form.category_id ?? ""}
-                onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}
-              >
-                <option value="">Sin categoría</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <label className="text-sm font-semibold text-ink-primary mb-1 block">
+                Categorías
+              </label>
+              <p className="text-xs text-ink-soft mb-2">
+                Marcá una o varias. La marcada como <strong>★ Principal</strong> es la que se usa
+                para breadcrumbs y productos relacionados.
+              </p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                {categories.map((c) => {
+                  const checked = selectedCategoryIds.includes(c.id);
+                  const isPrimary = primaryCategoryId === c.id;
+                  return (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition ${
+                        checked ? "bg-rose-whisper" : "hover:bg-rose-pastel/40"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-rose-deep"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedCategoryIds((prev) => [...prev, c.id]);
+                            if (!primaryCategoryId) setPrimaryCategoryId(c.id);
+                          } else {
+                            setSelectedCategoryIds((prev) => prev.filter((id) => id !== c.id));
+                            if (primaryCategoryId === c.id) {
+                              const remaining = selectedCategoryIds.filter(
+                                (id) => id !== c.id
+                              );
+                              setPrimaryCategoryId(remaining[0] ?? null);
+                            }
+                          }
+                        }}
+                      />
+                      <span className="text-sm flex-1">{c.name}</span>
+                      {checked && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPrimaryCategoryId(c.id);
+                          }}
+                          className={`text-xs px-2 py-0.5 rounded-full transition ${
+                            isPrimary
+                              ? "bg-rose-deep text-white"
+                              : "border border-rose-medium text-rose-deep hover:bg-rose-pastel"
+                          }`}
+                          title={isPrimary ? "Categoría principal" : "Marcar como principal"}
+                        >
+                          {isPrimary ? "★ Principal" : "Marcar"}
+                        </button>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input

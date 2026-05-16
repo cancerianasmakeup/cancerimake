@@ -12,9 +12,10 @@ export default async function AdminCategoriesPage() {
     .select("*")
     .order("display_order");
 
-  // Contar productos por categoría (una query separada)
+  // Contar productos por categoría usando la tabla join product_categories.
+  // Un producto puede estar en N categorías → cuenta en cada una.
   const { data: productCounts } = await supabase
-    .from("products")
+    .from("product_categories")
     .select("category_id");
   const counts: Record<string, number> = {};
   productCounts?.forEach((p: any) => {

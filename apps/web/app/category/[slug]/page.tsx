@@ -39,12 +39,22 @@ async function CategoryContent({
 
   if (!category) notFound();
 
-  const { data: products } = await supabase
-    .from("products")
-    .select("*, variants:product_variants(id)")
-    .eq("category_id", category.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+  // Productos vinculados a esta categoría vía product_categories (multi-cat support).
+  const { data: links } = await supabase
+    .from("product_categories")
+    .select("product_id")
+    .eq("category_id", category.id);
+
+  const productIds = (links ?? []).map((l) => l.product_id);
+
+  const { data: products } = productIds.length
+    ? await supabase
+        .from("products")
+        .select("*, variants:product_variants(id)")
+        .in("id", productIds)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+    : { data: [] as Product[] };
 
   return (
     <>

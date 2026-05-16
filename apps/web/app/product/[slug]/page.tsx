@@ -36,30 +36,58 @@ async function ProductContent({
 
   const { data: product } = await supabase
     .from("products")
-    .select("*, category:categories(name, slug)")
+    .select("*")
     .eq("slug", slug)
     .eq("status", "active")
     .single();
 
   if (!product) notFound();
 
+  // Categorías del producto (puede tener varias). Primary va para breadcrumb.
+  const { data: productCategories } = await supabase
+    .from("product_categories")
+    .select("is_primary, category:categories(id, name, slug)")
+    .eq("product_id", product.id);
+
+  const categoryLinks = ((productCategories ?? []) as unknown) as Array<{
+    is_primary: boolean;
+    category: { id: string; name: string; slug: string } | null;
+  }>;
+  const primaryCategory =
+    categoryLinks.find((l) => l.is_primary)?.category ??
+    categoryLinks[0]?.category ??
+    null;
+  const productCategoryIds = categoryLinks.map((l) => l.category?.id).filter(Boolean) as string[];
+
   const { data: variants } = await supabase
     .from("product_variants")
     .select("*")
     .eq("product_id", product.id);
 
-  // Productos similares: misma categoría, activos, distintos al actual (máx 12)
-  const { data: related } = await supabase
-    .from("products")
-    .select("*")
-    .eq("status", "active")
-    .neq("id", product.id)
-    .eq("category_id", product.category_id ?? "")
-    .order("is_featured", { ascending: false })
-    .limit(12);
+  // Productos similares: comparten al menos una categoría con el actual.
+  let related: Product[] = [];
+  if (productCategoryIds.length > 0) {
+    const { data: relatedLinks } = await supabase
+      .from("product_categories")
+      .select("product_id")
+      .in("category_id", productCategoryIds)
+      .neq("product_id", product.id);
+
+    const relatedIds = Array.from(new Set((relatedLinks ?? []).map((r) => r.product_id)));
+    if (relatedIds.length > 0) {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("status", "active")
+        .in("id", relatedIds)
+        .order("is_featured", { ascending: false })
+        .limit(12);
+      related = (data as Product[] | null) ?? [];
+    }
+  }
 
   // Si hay pocos de la misma categoría completar con featured de cualquier categoría
-  let relatedProducts: Product[] = (related as Product[] | null) ?? [];
+  let relatedProducts: Product[] = related;
   if (relatedProducts.length < 4) {
     const { data: featured } = await supabase
       .from("products")
@@ -73,7 +101,9 @@ async function ProductContent({
     relatedProducts = [...relatedProducts, ...featuredList.filter((p) => !existingIds.has(p.id))].slice(0, 12);
   }
 
-  const p = product as Product & { category: { name: string; slug: string } | null };
+  const p = { ...(product as Product), category: primaryCategory } as Product & {
+    category: { name: string; slug: string } | null;
+  };
   const hasDiscount = p.compare_price && p.compare_price > p.price;
 
   return (

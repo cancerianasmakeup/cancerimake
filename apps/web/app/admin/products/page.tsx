@@ -9,7 +9,7 @@ export default async function AdminProducts() {
   const supabase = await createSupabaseServer();
   const { data: products } = await supabase
     .from("products")
-    .select("*, categories(name)")
+    .select("*, product_categories(is_primary, category:categories(name))")
     .order("created_at", { ascending: false });
 
   return (
@@ -52,7 +52,22 @@ export default async function AdminProducts() {
                     </div>
                   </div>
                 </td>
-                <td className="p-4 text-ink-secondary">{p.categories?.name ?? "—"}</td>
+                <td className="p-4 text-ink-secondary">
+                  {(() => {
+                    const links = (p.product_categories ?? []) as Array<{ is_primary: boolean; category: { name: string } | null }>;
+                    const primary = links.find((l) => l.is_primary)?.category?.name;
+                    const others = links.filter((l) => !l.is_primary).map((l) => l.category?.name).filter(Boolean);
+                    if (!primary && others.length === 0) return "—";
+                    return (
+                      <>
+                        <span>{primary ?? others[0]}</span>
+                        {others.length > 0 && primary && (
+                          <span className="text-xs text-ink-soft ml-1">+{others.length}</span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </td>
                 <td className="p-4 font-semibold">{formatPrice(p.price)}</td>
                 <td className="p-4">
                   <span className={p.stock <= 3 ? "text-error font-bold" : "text-ink-secondary"}>

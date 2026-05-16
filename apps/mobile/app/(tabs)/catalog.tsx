@@ -60,17 +60,23 @@ export default function CatalogScreen() {
       });
   }, [categorySlug]);
 
-  // Productos cuando cambia categoría / orden / búsqueda
-  useEffect(() => {
-    const reqId = ++requestId.current;
-    setLoading(true);
+  // Helper: si hay categoría seleccionada, primero resolvemos los product_ids
+  // vinculados vía product_categories (soporta multi-categoría por producto).
+  async function fetchProducts(): Promise<Product[]> {
+    let productIdsFilter: string[] | null = null;
+    if (selectedCat) {
+      const { data: links } = await supabase
+        .from("product_categories")
+        .select("product_id")
+        .eq("category_id", selectedCat);
+      productIdsFilter = (links ?? []).map((l: any) => l.product_id);
+      if (productIdsFilter.length === 0) return [];
+    }
 
     let q = supabase.from("products").select("*").eq("status", "active");
-
-    if (selectedCat) q = q.eq("category_id", selectedCat);
+    if (productIdsFilter) q = q.in("id", productIdsFilter);
 
     if (debouncedSearch.length > 0) {
-      // ilike en name o description
       const term = `%${debouncedSearch.replace(/[%_]/g, "")}%`;
       q = q.or(`name.ilike.${term},description.ilike.${term}`);
     }
@@ -79,10 +85,17 @@ export default function CatalogScreen() {
     else if (sort === "price_asc") q = q.order("price", { ascending: true });
     else if (sort === "price_desc") q = q.order("price", { ascending: false });
 
-    q.then(({ data }) => {
-      // Ignorá la respuesta si el usuario ya disparó otra búsqueda
+    const { data } = await q;
+    return (data ?? []) as Product[];
+  }
+
+  // Productos cuando cambia categoría / orden / búsqueda
+  useEffect(() => {
+    const reqId = ++requestId.current;
+    setLoading(true);
+    fetchProducts().then((data) => {
       if (reqId !== requestId.current) return;
-      setProducts((data ?? []) as Product[]);
+      setProducts(data);
       setLoading(false);
     });
   }, [selectedCat, debouncedSearch, sort]);
@@ -90,17 +103,7 @@ export default function CatalogScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     requestId.current++; // invalida cualquier request en vuelo
-    let q = supabase.from("products").select("*").eq("status", "active");
-    if (selectedCat) q = q.eq("category_id", selectedCat);
-    if (debouncedSearch.length > 0) {
-      const term = `%${debouncedSearch.replace(/[%_]/g, "")}%`;
-      q = q.or(`name.ilike.${term},description.ilike.${term}`);
-    }
-    if (sort === "recent") q = q.order("created_at", { ascending: false });
-    else if (sort === "price_asc") q = q.order("price", { ascending: true });
-    else if (sort === "price_desc") q = q.order("price", { ascending: false });
-    const { data } = await q;
-    setProducts((data ?? []) as Product[]);
+    setProducts(await fetchProducts());
     setRefreshing(false);
   };
 

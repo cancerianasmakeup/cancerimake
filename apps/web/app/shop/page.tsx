@@ -57,10 +57,20 @@ async function ShopContent({
         .order("display_order"),
       supabase
         .from("products")
-        .select("*, category:categories(name, slug), variants:product_variants(id)")
+        .select(
+          "*, product_categories(category_id, is_primary, category:categories(id, name, slug)), variants:product_variants(id)"
+        )
         .eq("status", "active")
         .order("created_at", { ascending: false }),
     ]);
+
+  // Aplanar categorías: marcamos category = primary (para compat con ProductCard / filtros legacy).
+  const products = ((allProducts as any[] | null) ?? []).map((p) => {
+    const links: Array<{ is_primary: boolean; category: { id: string; name: string; slug: string } | null }> =
+      p.product_categories ?? [];
+    const primary = links.find((l) => l.is_primary)?.category ?? links[0]?.category ?? null;
+    return { ...p, category: primary } as Product;
+  });
 
   return (
     <>
@@ -69,7 +79,7 @@ async function ShopContent({
       <ShopBrowser
         featured={(featured as Product[] | null) ?? []}
         categories={(categories as Category[] | null) ?? []}
-        products={(allProducts as Product[] | null) ?? []}
+        products={products}
         initialQ={params.q ?? ""}
         initialCat={params.cat ?? ""}
         initialSort={params.sort ?? "recent"}

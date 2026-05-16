@@ -47,12 +47,18 @@ export interface Category {
   description: string | null;
 }
 
+export interface ProductCategoryLink {
+  category_id: string;
+  is_primary: boolean;
+  category?: Pick<Category, "id" | "name" | "slug">;
+}
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
   description: string | null;
-  category_id: string | null;
+  category_id: string | null; // legacy: refleja la categoría primary (sincronizada por trigger)
   price: number;
   compare_price: number | null;
   cost: number; // costo interno (para margen, no se muestra al cliente). Default 0.
@@ -68,6 +74,7 @@ export interface Product {
   height_cm: number | null;
   created_at: string;
   category?: Category;
+  product_categories?: ProductCategoryLink[];
 }
 
 export interface ProductVariant {

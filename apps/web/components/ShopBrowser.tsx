@@ -66,7 +66,17 @@ export default function ShopBrowser({
 
   const filtered = useMemo(() => {
     let list = products;
-    if (cat) list = list.filter((p) => p.category?.slug === cat || (p as any).category_id === cat);
+    if (cat)
+      list = list.filter((p) => {
+        if (p.category?.slug === cat) return true;
+        const links = (p as any).product_categories as
+          | Array<{ category?: { slug?: string } | null }>
+          | undefined;
+        return (
+          (links ?? []).some((l) => l.category?.slug === cat) ||
+          (p as any).category_id === cat
+        );
+      });
     if (debouncedQ) {
       const needle = debouncedQ.toLowerCase();
       list = list.filter((p) =>
