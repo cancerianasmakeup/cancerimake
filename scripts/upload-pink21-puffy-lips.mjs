@@ -3,37 +3,36 @@ import path from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE, R2 } from "./lib/secrets.mjs";
-const MAQUILLAJE_CATEGORY_ID = "a7557e9c-bca6-4598-80bd-ffcc4c1b11bf";
+const MAQUILLAJE_CATEGORY_ID  = "a7557e9c-bca6-4598-80bd-ffcc4c1b11bf";
+const PARA_NINAS_CATEGORY_ID  = "efc8cc64-7c06-4bbd-b002-c8a8e0385714";
 const downloadsDir = "C:/Users/LIYO/Downloads";
 
 const galleryImages = [
-  { local: "D_NQ_NP_2X_686936-MLA104894136493_012026-F.webp", nice: "tei-sky-high-original-collage.webp" },
-  { local: "D_NQ_NP_2X_808193-MLA98533877820_112025-F.webp",  nice: "tei-sky-high-original-display.webp" },
-  { local: "D_Q_NP_953424-MLA99010149399_112025-F.webp",      nice: "tei-sky-high-original-rose-gold-brush.webp" },
-  { local: "D_Q_NP_852841-MLA98533937420_112025-F.webp",      nice: "tei-sky-high-original-black-brush.webp" },
-  { local: "D_Q_NP_782602-MLA99009373705_112025-F.webp",      nice: "tei-sky-high-original-dos-tubos.webp" },
+  { local: "CS7071.jpg",                                  nice: "pink21-puffy-lips-display-cover.jpg" },
+  { local: "a7b6df37-cbfb-4972-8e32-5da90690d597.png",    nice: "pink21-puffy-lips-infografia.png" },
 ];
 
 const variantSpecs = [
-  { name: "Rose Gold",  color_hex: "#D4A78A", stock: 12, ref: 2 },
-  { name: "Super Black", color_hex: "#1A1A1A", stock: 12, ref: 3 },
+  { name: "Rosa palo",   color_hex: "#F4C7C9", stock: 8 },
+  { name: "Rosa fucsia", color_hex: "#D67BAE", stock: 8 },
+  { name: "Cereza",      color_hex: "#C42044", stock: 8 },
 ];
 
 const payload = {
-  name: "Mascara Sky High Lash Sensational — TEI Cosmética (8002)",
-  slug: "tei-mascara-sky-high-original-8002",
+  name: "Puffy Lips Lipgloss con Pompón — Pink21",
+  slug: "pink21-puffy-lips-lipgloss-pompon",
   description:
-    "✨ Mascara Sky High de TEI Cosmética — la versión original Lash Sensational que se volvió cult. Para mujeres libres que aman pestañas largas, definidas y con drama tipo \"sky high\" (literal, llegan al cielo). Fórmula Super Black + Waterproof: color negro intenso que no se corre, no se va con la humedad y aguanta el día completo.\n\n🌟 **Beneficios:**\n\n- ✔️ Extensión y volumen al máximo en cada pasada\n- ✔️ Pestañas largas, separadas y definidas\n- ✔️ Color Super Black intenso\n- ✔️ Waterproof — resiste agua, sudor y lágrimas\n- ✔️ Cepillo flexible tipo Lash Sensational — abraza cada pestaña\n- ✔️ Ideal para look diario o de noche\n- ✔️ Sin grumos ni costras\n- 🐰 Cruelty Free · Autorizado ANMAT\n\nDisponible en dos ediciones de packaging (misma fórmula Super Black por dentro):\n\n- **Rose Gold** — envase rosé gold metalizado con detalles dorados, vibe femenina y elegante\n- **Super Black** — envase negro con detalles dorados, vibe edgy y minimal\n\n**Modo de uso:**\n\n1. Mirate al espejo desde abajo levantando el mentón.\n2. Apoyá el cepillo en la raíz de las pestañas y movelo en zig-zag hacia las puntas.\n3. Para máximo efecto, aplicá una segunda capa antes de que la primera se seque — así se fusiona y queda parejo.\n4. Bonus: pasá el cepillo también por debajo de las pestañas para abrir la mirada.\n\nTip: rizá las pestañas con eyelash curler antes de aplicar — la fórmula respeta el curl durante todo el día. Para sacar el waterproof al final del día usá desmaquillante bifásico.\n\nÍtem TEI 8002.",
-  category_id: MAQUILLAJE_CATEGORY_ID,
-  price: 3000,
-  compare_price: 4500,
+    "Puffy Lips Lipgloss de Pink21 — brillo labial con efecto labios carnosos y pompón colgante en la tapa. Glossy, girly, irresistible 💗. Para chicas y mujeres libres que aman lo cute y los labios que dejan estela de brillo.\n\nCaracterísticas:\n\n- 💋 High shine gloss finish — brillo intenso tipo cristal\n- 🪶 Fórmula lightweight & non-sticky — no se siente pegajoso\n- 🎀 Adorable pom-pom charm — pompón colgante en la tapa\n- 💖 Efecto labios carnosos (plump natural)\n- 🐰 Cruelty Free\n\nDisponible en 3 tonos. Elegí el tuyo al agregar al carrito:\n\n- **Rosa palo** — rosa baby translúcido para uso diario\n- **Rosa fucsia** — rosa medio vibrante\n- **Cereza** — rojo cereza intenso\n\nIdeal para regalar a chicas — entra perfecto en cualquier neceser o cartera. El pompón funciona también como llavero o adorno para la cartera.\n\nModo de uso: aplicá una capa fina con el aplicador directo en los labios. Para look más jugoso, aplicá una segunda capa. Combina perfecto encima de cualquier labial mate.\n\nMarca Pink21 · Aprobado ANMAT.",
+  category_id: MAQUILLAJE_CATEGORY_ID, // legacy field (trigger lo mantiene = primary)
+  price: 3600,
+  compare_price: 4700,
   status: "active",
   is_featured: false,
   cost: 0,
-  weight_grams: 35,
-  length_cm: 14,
-  width_cm: 2,
-  height_cm: 2,
+  weight_grams: 25,
+  length_cm: 10,
+  width_cm: 3,
+  height_cm: 3,
 };
 
 function sanitizeFileName(name) {
@@ -96,6 +95,7 @@ async function postRest(table, rows, prefer = "return=representation") {
     galleryUrls.push(url);
   }
 
+  const variantReferenceImage = galleryUrls[0];
   const totalStock = variantSpecs.reduce((s, v) => s + v.stock, 0);
 
   const [product] = await postRest("products", [{
@@ -105,13 +105,20 @@ async function postRest(table, rows, prefer = "return=representation") {
   }]);
   console.log("  Product ID:", product.id, "  Stock total:", totalStock);
 
+  // Multi-categoría: Maquillaje (primary) + Para Niñas (secondary).
+  await postRest("product_categories", [
+    { product_id: product.id, category_id: MAQUILLAJE_CATEGORY_ID, is_primary: true  },
+    { product_id: product.id, category_id: PARA_NINAS_CATEGORY_ID, is_primary: false },
+  ]);
+  console.log("  Categorías: Maquillaje (primary) + Para Niñas (secondary)");
+
   const variantRows = variantSpecs.map((v) => ({
     product_id: product.id,
     name: v.name,
     attributes: { color_hex: v.color_hex },
     price_diff: 0,
     stock: v.stock,
-    image_url: galleryUrls[v.ref],
+    image_url: variantReferenceImage,
   }));
   const insertedVariants = await postRest("product_variants", variantRows);
   for (const v of insertedVariants) {

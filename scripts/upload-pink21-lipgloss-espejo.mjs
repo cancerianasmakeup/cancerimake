@@ -6,44 +6,36 @@ import { SUPABASE_URL, SUPABASE_SERVICE_ROLE, R2 } from "./lib/secrets.mjs";
 const MAQUILLAJE_CATEGORY_ID = "a7557e9c-bca6-4598-80bd-ffcc4c1b11bf";
 const downloadsDir = "C:/Users/LIYO/Downloads";
 
-const productImages = [
-  // Cover: la caja + 6 tonos numerados con swatches (más informativa)
-  { local: "D_Q_NP_960194-MLA69220170494_052023-F.webp", nice: "pink21-better-skin-caja-6tonos.webp" },
-  // 6 tubos con swatches grandes
-  { local: "D_Q_NP_703286-MLA83454092764_042025-F.webp", nice: "pink21-better-skin-6tonos-swatches.webp" },
-  // 6 tubos alineados
-  { local: "BASE-PINK-.jpg",                              nice: "pink21-better-skin-6tubos.jpg" },
-  // 2 tubos pack shot
-  { local: "D_Q_NP_859659-MLA83454141274_042025-F.webp", nice: "pink21-better-skin-pack.webp" },
-  // Close-up de textura
-  { local: "D_Q_NP_886521-MLA83454092766_042025-F.webp", nice: "pink21-better-skin-textura.webp" },
+const galleryImages = [
+  { local: "CS6748.jpg",  nice: "pink21-lipgloss-espejo-tonos-anmat.jpg" },
+  { local: "122123.png",  nice: "pink21-lipgloss-espejo-display.png" },
+];
+
+const variantSpecs = [
+  { name: "Tono 01 — Transparente glow",    color_hex: "#F4E4D8", stock: 4 },
+  { name: "Tono 02 — Rosa palo",             color_hex: "#D8919A", stock: 4 },
+  { name: "Tono 03 — Rosa coral",            color_hex: "#C97A7E", stock: 4 },
+  { name: "Tono 04 — Nude amaderado",        color_hex: "#B47567", stock: 4 },
+  { name: "Tono 05 — Marrón rojizo",         color_hex: "#965244", stock: 4 },
+  { name: "Tono 06 — Vino borgoña",          color_hex: "#5A2024", stock: 4 },
 ];
 
 const payload = {
-  name: "Base Líquida Better Skin — Pink 21 (30 ml)",
-  slug: "base-liquida-better-skin-pink-21-30ml",
+  name: "Lipgloss Brillo Labial con Espejo — Pink21 (CS6748)",
+  slug: "pink21-lipgloss-brillo-labial-espejo-cs6748",
   description:
-    "Base Líquida \"Your Better Skin Look\" de Pink 21 — la base que está rompiendo en TikTok. Cobertura ultra profesional, acabado natural a satinado, fórmula ligera que se desliza fácil y dura puesta varias horas. Para mujeres libres que quieren un look make-up impecable sin gastar una fortuna.\n\nCaracterísticas:\n\n- Cobertura: media a alta, buildable\n- Acabado: satinado natural — no se ve cartón\n- Textura: fluida, fácil de difuminar con esponja, brocha o dedos\n- Resistente: no se baja en el día a día\n- Contenido: 30 ml por tubo\n\nDisponible en 6 tonos para que encuentres tu match. Elegí el tuyo al agregar al carrito:\n\n- Tono 01 — Light beige (piel muy clara)\n- Tono 02 — Beige medio\n- Tono 03 — Honey (tono medio cálido)\n- Tono 04 — Marfil / Light (piel clara neutra)\n- Tono 05 — Caramelo (medio oscuro)\n- Tono 06 — Canela (oscuro cálido)\n\nTip: si no estás segura del tono, elegí el más cercano y mezclalo con un poco de crema hidratante para suavizar la cobertura, o combiná dos tonos para customizar.",
+    "Lipgloss con Espejo de Pink21 — brillo labial súper jugoso con frasco transparente tipo cápsula y espejo incorporado en la tapa. Para mujeres libres que aman tener labial brilloso siempre a mano sin sacar el espejo de la cartera.\n\nCaracterísticas:\n\n- 💋 Acabado glossy ultra brilloso — efecto labios jugosos\n- 🪞 Tapa con espejo incorporado — retoque rápido en cualquier lado\n- 🌸 Fórmula no pegajosa — se siente liviana y cómoda\n- 💧 Color buildable — capas suaves para gloss tinted, capas múltiples para color full\n- ✨ Hidrata y deja sensación plump natural en los labios\n- 🐰 Cruelty Free · Aprobado ANMAT\n- 💎 Frasco transparente facetado con tapa tipo cúpula\n\nDisponible en 6 tonos de la línea nude-rosado-vino. Elegí el tuyo al agregar al carrito:\n\n- **Tono 01** — Transparente glow (sin color, solo brillo)\n- **Tono 02** — Rosa palo (rosa muy suave para uso diario)\n- **Tono 03** — Rosa coral (rosa cálido fresco)\n- **Tono 04** — Nude amaderado (nude rosado con fondo marrón)\n- **Tono 05** — Marrón rojizo (terracota cálido)\n- **Tono 06** — Vino borgoña (vino oscuro intenso, vibe noche)\n\nModo de uso: aplicá una capa fina con el aplicador. Para look más intenso, aplicá una segunda capa o usalo encima de tu labial mate favorito — el brillo y el espejo lo hacen el lipgloss más práctico para la cartera.\n\nÍtem Pink21 CS6748.",
   category_id: MAQUILLAJE_CATEGORY_ID,
   price: 3600,
-  compare_price: 5000,
+  compare_price: 4500,
   status: "active",
   is_featured: false,
   cost: 0,
-  weight_grams: 50,
-  length_cm: 12,
-  width_cm: 4,
+  weight_grams: 18,
+  length_cm: 9,
+  width_cm: 3,
   height_cm: 3,
 };
-
-const variants = [
-  { name: "Tono 01 — Light beige",      color_hex: "#E6C9A2", stock: 4 },
-  { name: "Tono 02 — Beige medio",      color_hex: "#D4A877", stock: 4 },
-  { name: "Tono 03 — Honey",            color_hex: "#C99668", stock: 4 },
-  { name: "Tono 04 — Marfil",           color_hex: "#EBD4B0", stock: 4 },
-  { name: "Tono 05 — Caramelo",         color_hex: "#A87858", stock: 4 },
-  { name: "Tono 06 — Canela",           color_hex: "#8E5E3A", stock: 4 },
-];
 
 function sanitizeFileName(name) {
   return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9._-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
@@ -58,6 +50,7 @@ function contentTypeFor(filename) {
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
+  if (ext === ".avif") return "image/avif";
   return "application/octet-stream";
 }
 
@@ -96,29 +89,31 @@ async function postRest(table, rows, prefer = "return=representation") {
   });
   console.log(`Procesando: ${payload.name}`);
 
-  const urls = [];
-  for (const f of productImages) {
+  const galleryUrls = [];
+  for (const f of galleryImages) {
     const full = path.join(downloadsDir, f.local);
     const url = await uploadToR2(client, full, f.nice);
-    console.log("  R2:", url);
-    urls.push(url);
+    console.log("  R2 galería:", url);
+    galleryUrls.push(url);
   }
 
-  // Usamos la 2da imagen (los 6 tonos con swatches) como imagen por variante,
-  // así al elegir un tono el cliente ve la referencia de colores hasta que carguemos
-  // fotos individuales de cada tono.
-  const variantReferenceImage = urls[1];
-
-  const totalStock = variants.reduce((s, v) => s + v.stock, 0);
+  const variantReferenceImage = galleryUrls[0];
+  const totalStock = variantSpecs.reduce((s, v) => s + v.stock, 0);
 
   const [product] = await postRest("products", [{
     ...payload,
     stock: totalStock,
-    images: urls,
+    images: galleryUrls,
   }]);
   console.log("  Product ID:", product.id, "  Stock total:", totalStock);
 
-  const variantRows = variants.map((v) => ({
+  await postRest("product_categories", [{
+    product_id: product.id,
+    category_id: MAQUILLAJE_CATEGORY_ID,
+    is_primary: true,
+  }]);
+
+  const variantRows = variantSpecs.map((v) => ({
     product_id: product.id,
     name: v.name,
     attributes: { color_hex: v.color_hex },

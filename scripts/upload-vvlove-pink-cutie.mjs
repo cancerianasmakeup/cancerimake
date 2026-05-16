@@ -2,20 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-const SUPABASE_URL = "https://qccfsbjshlomvyfabtra.supabase.co";
-const SERVICE_ROLE =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjY2ZzYmpzaGxvbXZ5ZmFidHJhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Nzg3ODQ1NSwiZXhwIjoyMDkzNDU0NDU1fQ.OV-VJ85BguDDZw9N1_H07D9VwwBEb6B_L0xKh4HIlzE";
-
-const R2 = {
-  accountId: "c80fd3d522f165db46f0eef13f65d471",
-  accessKeyId: "7d6c0ba81c9ac18637e6bce6d565149c",
-  secretAccessKey:
-    "eaf21ba907858297f98bc8c94511b2847e30593a1b5998e120dd966432bf1064",
-  bucket: "cancerianasmakeup",
-  prefix: "CANCERIANAS PRODUCTOS",
-  publicBaseUrl: "https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev",
-};
-
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE, R2 } from "./lib/secrets.mjs";
 const SAPHIRUS_CATEGORY_ID = "59f56e54-33fd-4ee8-91b0-e2855411c92b";
 const downloadsDir = "C:/Users/LIYO/Downloads";
 
@@ -87,8 +74,8 @@ async function uploadToR2(client, filepath, niceName) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
     method: "POST",
     headers: {
-      apikey: SERVICE_ROLE,
-      Authorization: `Bearer ${SERVICE_ROLE}`,
+      apikey: SUPABASE_SERVICE_ROLE,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE}`,
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },

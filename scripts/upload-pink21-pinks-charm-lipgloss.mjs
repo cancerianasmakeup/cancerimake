@@ -7,33 +7,35 @@ const MAQUILLAJE_CATEGORY_ID = "a7557e9c-bca6-4598-80bd-ffcc4c1b11bf";
 const downloadsDir = "C:/Users/LIYO/Downloads";
 
 const galleryImages = [
-  { local: "D_NQ_NP_2X_686936-MLA104894136493_012026-F.webp", nice: "tei-sky-high-original-collage.webp" },
-  { local: "D_NQ_NP_2X_808193-MLA98533877820_112025-F.webp",  nice: "tei-sky-high-original-display.webp" },
-  { local: "D_Q_NP_953424-MLA99010149399_112025-F.webp",      nice: "tei-sky-high-original-rose-gold-brush.webp" },
-  { local: "D_Q_NP_852841-MLA98533937420_112025-F.webp",      nice: "tei-sky-high-original-black-brush.webp" },
-  { local: "D_Q_NP_782602-MLA99009373705_112025-F.webp",      nice: "tei-sky-high-original-dos-tubos.webp" },
+  { local: "7098be6a-4dfb-4eae-890b-0cfd82525948.png", nice: "pink21-pinks-charm-cover-premium.png" },
+  { local: "CS7070.jpg",                                nice: "pink21-pinks-charm-display.jpg" },
+  { local: "CS7070.jpg-.jpg",                           nice: "pink21-pinks-charm-celular-colgante.jpg" },
 ];
 
 const variantSpecs = [
-  { name: "Rose Gold",  color_hex: "#D4A78A", stock: 12, ref: 2 },
-  { name: "Super Black", color_hex: "#1A1A1A", stock: 12, ref: 3 },
+  { name: "Tono 01 — Rosa pastel",     color_hex: "#F2C2C8", stock: 4 },
+  { name: "Tono 02 — Rosa nude",       color_hex: "#D69397", stock: 4 },
+  { name: "Tono 03 — Rosa fucsia",     color_hex: "#D85795", stock: 4 },
+  { name: "Tono 04 — Cereza",          color_hex: "#C42044", stock: 4 },
+  { name: "Tono 05 — Rojo intenso",    color_hex: "#A8132A", stock: 4 },
+  { name: "Tono 06 — Berry fucsia",    color_hex: "#852158", stock: 4 },
 ];
 
 const payload = {
-  name: "Mascara Sky High Lash Sensational — TEI Cosmética (8002)",
-  slug: "tei-mascara-sky-high-original-8002",
+  name: "Pink's Charm Lipgloss con Colgante Corazón — Pink21",
+  slug: "pink21-pinks-charm-lipgloss-corazon",
   description:
-    "✨ Mascara Sky High de TEI Cosmética — la versión original Lash Sensational que se volvió cult. Para mujeres libres que aman pestañas largas, definidas y con drama tipo \"sky high\" (literal, llegan al cielo). Fórmula Super Black + Waterproof: color negro intenso que no se corre, no se va con la humedad y aguanta el día completo.\n\n🌟 **Beneficios:**\n\n- ✔️ Extensión y volumen al máximo en cada pasada\n- ✔️ Pestañas largas, separadas y definidas\n- ✔️ Color Super Black intenso\n- ✔️ Waterproof — resiste agua, sudor y lágrimas\n- ✔️ Cepillo flexible tipo Lash Sensational — abraza cada pestaña\n- ✔️ Ideal para look diario o de noche\n- ✔️ Sin grumos ni costras\n- 🐰 Cruelty Free · Autorizado ANMAT\n\nDisponible en dos ediciones de packaging (misma fórmula Super Black por dentro):\n\n- **Rose Gold** — envase rosé gold metalizado con detalles dorados, vibe femenina y elegante\n- **Super Black** — envase negro con detalles dorados, vibe edgy y minimal\n\n**Modo de uso:**\n\n1. Mirate al espejo desde abajo levantando el mentón.\n2. Apoyá el cepillo en la raíz de las pestañas y movelo en zig-zag hacia las puntas.\n3. Para máximo efecto, aplicá una segunda capa antes de que la primera se seque — así se fusiona y queda parejo.\n4. Bonus: pasá el cepillo también por debajo de las pestañas para abrir la mirada.\n\nTip: rizá las pestañas con eyelash curler antes de aplicar — la fórmula respeta el curl durante todo el día. Para sacar el waterproof al final del día usá desmaquillante bifásico.\n\nÍtem TEI 8002.",
+    "Pink's Charm Lipgloss de Pink21 — \"Brillo, estilo y encanto que te acompañan a todas partes\" ✨. Lipgloss mini con cordón rosa trenzado + dije de corazón holográfico que funciona como **colgante para el celular** 📱💖. Detalles que enamoran.\n\nCaracterísticas:\n\n- ✨ **Brillo gloss** — acabado luminoso y no pegajoso\n- 💖 **Diseño cute** — colgante en forma de corazón holográfico iridiscente\n- 👜 **Ideal para llevar** — compacto, ligero y siempre a mano\n- 📱 **Con colgante para el celular** — se engancha directo a la funda con tu phone strap\n- 💋 Aplicador integrado tipo doe-foot\n- 🐰 Cruelty Free\n\nDisponible en 6 tonos. Elegí el tuyo al agregar al carrito:\n\n- **Tono 01** — Rosa pastel (rosa muy suave para uso diario)\n- **Tono 02** — Rosa nude (rosa-marrón natural)\n- **Tono 03** — Rosa fucsia (pink intenso)\n- **Tono 04** — Cereza (rojo cereza vibrante)\n- **Tono 05** — Rojo intenso (rojo clásico atemporal)\n- **Tono 06** — Berry fucsia (berry oscuro elegante)\n\nModo de uso: aplicá una capa fina con el aplicador directo sobre los labios. Combina perfecto encima de un labial mate. El charm de corazón holográfico queda increíble colgado del celular o de la cartera.",
   category_id: MAQUILLAJE_CATEGORY_ID,
-  price: 3000,
-  compare_price: 4500,
+  price: 4600,
+  compare_price: 5800,
   status: "active",
   is_featured: false,
   cost: 0,
-  weight_grams: 35,
-  length_cm: 14,
-  width_cm: 2,
-  height_cm: 2,
+  weight_grams: 25,
+  length_cm: 8,
+  width_cm: 3,
+  height_cm: 3,
 };
 
 function sanitizeFileName(name) {
@@ -96,6 +98,7 @@ async function postRest(table, rows, prefer = "return=representation") {
     galleryUrls.push(url);
   }
 
+  const variantReferenceImage = galleryUrls[0];
   const totalStock = variantSpecs.reduce((s, v) => s + v.stock, 0);
 
   const [product] = await postRest("products", [{
@@ -103,7 +106,13 @@ async function postRest(table, rows, prefer = "return=representation") {
     stock: totalStock,
     images: galleryUrls,
   }]);
-  console.log("  Product ID:", product.id, "  Stock total:", totalStock);
+  console.log("  Product ID:", product.id, " slug:", product.slug, " stock total:", totalStock);
+
+  await postRest("product_categories", [{
+    product_id: product.id,
+    category_id: MAQUILLAJE_CATEGORY_ID,
+    is_primary: true,
+  }]);
 
   const variantRows = variantSpecs.map((v) => ({
     product_id: product.id,
@@ -111,7 +120,7 @@ async function postRest(table, rows, prefer = "return=representation") {
     attributes: { color_hex: v.color_hex },
     price_diff: 0,
     stock: v.stock,
-    image_url: galleryUrls[v.ref],
+    image_url: variantReferenceImage,
   }));
   const insertedVariants = await postRest("product_variants", variantRows);
   for (const v of insertedVariants) {
