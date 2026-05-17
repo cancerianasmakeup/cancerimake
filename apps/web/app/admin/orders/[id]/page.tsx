@@ -348,23 +348,84 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
             </div>
             <div className="border-t border-rose-pastel mt-4 pt-4 space-y-1 text-sm">
               <div className="flex justify-between"><span>Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
-              <div className="flex justify-between"><span>Envío</span><span>{order.shipping_cost > 0 ? formatPrice(order.shipping_cost) : "se cotiza aparte"}</span></div>
+              <div className="flex justify-between">
+                <span>Envío</span>
+                <span>
+                  {order.shipping_cost > 0
+                    ? <>{formatPrice(order.shipping_cost)} <span className="text-xs text-ink-soft">(Correo)</span></>
+                    : <span className="text-ink-soft italic">se cotiza aparte</span>}
+                </span>
+              </div>
               <div className="flex justify-between font-display text-xl pt-2"><span>Total</span><span className="text-rose-deep font-bold">{formatPrice(order.total)}</span></div>
             </div>
           </div>
 
-          {/* Modalidad de entrega elegida en checkout */}
-          {order.wants_shipping !== false && (
-            <div className="card">
-              <h2 className="font-display text-xl mb-2">Modalidad de entrega</h2>
-              <p className="text-sm text-ink-secondary">
-                La clienta eligió: <strong className="text-ink-primary">
-                  {order.destination_type_requested === "sucursal" ? "Retiro en sucursal de correo" : "Envío a domicilio"}
-                </strong>
-              </p>
-              <p className="text-xs text-ink-soft mt-1">Cuando apruebes el pago, se crea automáticamente un envío y se le pide la dirección/sucursal exacta.</p>
-            </div>
-          )}
+          {/* Envío elegido en checkout — carrier + CP + zona + costo */}
+          {order.wants_shipping !== false && (() => {
+            const carrierKey = (order.shipping_address?.carrier_selected ?? "personalizado") as string;
+            const correoQuote = order.shipping_address?.correo_quote ?? null;
+            const carrierMeta: Record<string, { label: string; emoji: string; tone: string; note: string }> = {
+              correo_argentino: {
+                label: "Correo Argentino",
+                emoji: "📮",
+                tone: "bg-success/15 border-success/40 text-success",
+                note: "Envío cobrado en el checkout — pagás vos cuando despachás.",
+              },
+              andreani: {
+                label: "Andreani",
+                emoji: "📦",
+                tone: "bg-warning/15 border-warning/40 text-ink-primary",
+                note: "Envío diferido — después de aprobar pago hay que mandarle el link de pago de Andreani.",
+              },
+              personalizado: {
+                label: "Envío personalizado",
+                emoji: "🤝",
+                tone: "bg-rose-pastel/40 border-rose-medium/40 text-ink-primary",
+                note: "Coordinar con la clienta por chat después de aprobar pago.",
+              },
+            };
+            const meta = carrierMeta[carrierKey] ?? carrierMeta.personalizado;
+            return (
+              <div className="card space-y-3">
+                <h2 className="font-display text-xl">Envío elegido por la clienta</h2>
+                <div className={`rounded-2xl border-2 p-4 ${meta.tone}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">{meta.emoji}</span>
+                    <span className="font-display text-2xl font-bold">{meta.label}</span>
+                  </div>
+                  <p className="text-xs opacity-80">{meta.note}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-rose-whisper p-3">
+                    <p className="text-xs text-ink-soft uppercase font-bold tracking-wider">Modalidad</p>
+                    <p className="font-semibold text-ink-primary mt-1">
+                      {order.destination_type_requested === "sucursal" ? "Retiro en sucursal" : "A domicilio"}
+                    </p>
+                  </div>
+                  {carrierKey === "correo_argentino" && correoQuote ? (
+                    <div className="rounded-xl bg-rose-whisper p-3">
+                      <p className="text-xs text-ink-soft uppercase font-bold tracking-wider">CP destino</p>
+                      <p className="font-semibold text-ink-primary mt-1">{correoQuote.cp ?? "—"} <span className="text-xs text-ink-soft">({correoQuote.zone ?? "?"})</span></p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-rose-whisper p-3">
+                      <p className="text-xs text-ink-soft uppercase font-bold tracking-wider">Envío $</p>
+                      <p className="font-semibold text-ink-soft italic mt-1">se cotiza aparte</p>
+                    </div>
+                  )}
+                </div>
+
+                {carrierKey === "correo_argentino" && correoQuote && (
+                  <div className="rounded-xl bg-success/10 border border-success/30 p-3 text-sm">
+                    <p className="text-ink-primary">
+                      Envío Correo ya cobrado: <strong className="text-success">{formatPrice(correoQuote.cost ?? 0)}</strong> · Zona <strong>{correoQuote.zone}</strong> · tier hasta <strong>{correoQuote.tier}</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Dirección original del checkout (datos de contacto) */}
           {addr && (
