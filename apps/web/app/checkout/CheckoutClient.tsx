@@ -41,6 +41,10 @@ export default function CheckoutClient() {
       if (!user) { router.replace("/auth?redirect=/checkout"); return; }
       setUser(user);
 
+      // Lazy cleanup: cualquier carrito activo sin actividad >10min se expira.
+      // No bloqueamos si falla — solo es housekeeping.
+      try { await supabase.rpc("expire_old_carts"); } catch { /* noop */ }
+
       const [{ data: prof }, { data: cart }, { data: settingsRows }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("carts").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
@@ -167,6 +171,30 @@ export default function CheckoutClient() {
         subtotal: it.unit_price * it.quantity,
       }));
       await supabase.from("order_items").insert(orderItems);
+
+      // Descontar stock AHORA — al confirmar el pedido reservamos el stock.
+      // Si después el pago no se concreta, el admin puede cancelar la orden y
+      // (TODO) un job devuelve stock. Por ahora si admin cancela manual, hay
+      // que ajustar stock a mano.
+      for (const it of items) {
+        try {
+          if (it.variant_id) {
+            await supabase.rpc("decrement_variant_stock", {
+              p_variant_id: it.variant_id,
+              p_qty: it.quantity,
+            });
+          } else if (it.product_id) {
+            await supabase.rpc("decrement_product_stock", {
+              p_product_id: it.product_id,
+              p_qty: it.quantity,
+            });
+          }
+        } catch (stockErr) {
+          // No abortamos la compra si falla un descuento individual — el admin
+          // puede ajustar después. La orden queda creada igual.
+          console.error("decrement_stock falló para item", it.id, stockErr);
+        }
+      }
 
       // Marcar carrito como convertido
       await supabase.from("carts").update({ status: "converted" }).eq("user_id", user.id).eq("status", "active");

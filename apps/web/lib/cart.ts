@@ -18,6 +18,9 @@ export async function addItemToCart(
   supabase: SupabaseClient,
   opts: AddItemOpts
 ): Promise<void> {
+  // 0) Limpiar carritos abandonados antes de leer el propio (housekeeping lazy).
+  try { await supabase.rpc("expire_old_carts"); } catch { /* noop */ }
+
   // 1) Resolver carrito activo (crear si no existe)
   let { data: cart, error: cartErr } = await supabase
     .from("carts")

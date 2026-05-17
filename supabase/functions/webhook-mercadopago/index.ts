@@ -111,26 +111,14 @@ Deno.serve(async (req) => {
 
       await supabase.from("orders").update(updates).eq("id", refId);
 
-      // Si se pagó, descontar stock de productos + crear shipment + mandar link
+      // Si se pagó, crear shipment + mandar link.
+      // NOTA: el stock ya se descontó en CheckoutClient.createOrder cuando el
+      // usuario clickeó "Pagar" — no descontamos acá para evitar doble descuento.
       if (newStatus === "paid") {
         const { data: items } = await supabase
           .from("order_items")
           .select("product_id, variant_id, quantity, description, products(weight_grams, length_cm, width_cm, height_cm, name)")
           .eq("order_id", refId);
-
-        for (const item of items ?? []) {
-          if (item.variant_id) {
-            await supabase.rpc("decrement_variant_stock", {
-              p_variant_id: item.variant_id,
-              p_qty: item.quantity,
-            });
-          } else if (item.product_id) {
-            await supabase.rpc("decrement_product_stock", {
-              p_product_id: item.product_id,
-              p_qty: item.quantity,
-            });
-          }
-        }
 
         // Crear shipment automático para el flujo deferred (catálogo)
         await createShipmentAndNotify(supabase, refId, items ?? []);
