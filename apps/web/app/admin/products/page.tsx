@@ -32,6 +32,7 @@ export default async function AdminProducts() {
               <th className="p-4">Categoría</th>
               <th className="p-4">Precio</th>
               <th className="p-4">Stock</th>
+              <th className="p-4">Peso</th>
               <th className="p-4">Estado</th>
               <th className="p-4"></th>
             </tr>
@@ -75,6 +76,17 @@ export default async function AdminProducts() {
                   </span>
                 </td>
                 <td className="p-4">
+                  {p.weight_grams ? (
+                    <span className="text-ink-secondary text-xs">
+                      {p.weight_grams >= 1000
+                        ? `${(p.weight_grams / 1000).toFixed(2).replace(".", ",")} kg`
+                        : `${p.weight_grams} g`}
+                    </span>
+                  ) : (
+                    <span className="text-error text-xs font-bold">⚠ sin peso</span>
+                  )}
+                </td>
+                <td className="p-4">
                   <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${
                     p.status === "active" ? "bg-success/30 text-ink-primary" :
                     p.status === "draft" ? "bg-warning/30 text-ink-primary" :
@@ -95,7 +107,7 @@ export default async function AdminProducts() {
             ))}
             {(!products || products.length === 0) && (
               <tr>
-                <td colSpan={6} className="text-center py-16 text-ink-soft">
+                <td colSpan={7} className="text-center py-16 text-ink-soft">
                   Todavía no hay productos. <Link href="/admin/products/new" className="text-rose-deep font-semibold">Creá el primero →</Link>
                 </td>
               </tr>

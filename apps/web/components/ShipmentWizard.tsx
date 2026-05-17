@@ -98,6 +98,12 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
   const quote: QuoteData | null =
     carrier === "personalizado" ? null : quotes[carrier as "andreani" | "correo_argentino"];
 
+  // Para órdenes de Correo Argentino, el envío se cobró en el checkout junto con
+  // la orden. El CP + tipo de destino quedan frozen — la clienta NO puede cambiarlos
+  // porque el precio ya fue calculado y pagado en base a esos valores.
+  const cpLocked =
+    shipment?.carrier === "correo_argentino" && Number(shipment?.cost_charged ?? 0) > 0;
+
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -542,14 +548,16 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           </div>
 
           <Field
-            label="Código postal * (4 dígitos)"
+            label={cpLocked ? "Código postal * 🔒" : "Código postal * (4 dígitos)"}
             value={address.codigoPostal}
             onChange={(v) => {
+              if (cpLocked) return;
               const cp = v.replace(/\D/g, "").slice(0, 4);
               setAddress({ ...address, codigoPostal: cp });
               if (cp.length === 4) fetchAllQuotes(cp, "domicilio");
             }}
             placeholder="1414"
+            disabled={cpLocked}
           />
 
           <Field label="Calle *" value={address.calle} onChange={(v) => setAddress({ ...address, calle: v })} placeholder="Av. Corrientes" />
@@ -606,27 +614,38 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
             </p>
           </div>
 
+          {cpLocked && (
+            <div className="rounded-2xl bg-success/10 border border-success/40 p-3 text-sm">
+              <p className="font-bold text-success">Envío Correo Argentino ya pagado ✅</p>
+              <p className="text-xs text-ink-secondary mt-0.5">
+                El CP y la modalidad ({destinationType === "domicilio" ? "domicilio" : "retiro en sucursal"}) quedan fijos — el precio se calculó en base a esos valores cuando pagaste el carrito. Completá los datos restantes para que podamos despacharte.
+              </p>
+            </div>
+          )}
+
           {/* Toggle para cambiar domicilio/sucursal sobre la marcha */}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setDestinationType("domicilio")}
+              disabled={cpLocked}
+              onClick={() => !cpLocked && setDestinationType("domicilio")}
               className={`p-3 rounded-2xl border-2 text-sm font-semibold transition ${
                 destinationType === "domicilio"
                   ? "border-rose-deep bg-rose-whisper text-rose-deep"
                   : "border-rose-pastel text-ink-soft hover:border-rose-medium/50"
-              }`}
+              } ${cpLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             >
               <Home className="w-4 h-4 inline mr-1" /> Envío a domicilio
             </button>
             <button
               type="button"
-              onClick={() => setDestinationType("sucursal")}
+              disabled={cpLocked}
+              onClick={() => !cpLocked && setDestinationType("sucursal")}
               className={`p-3 rounded-2xl border-2 text-sm font-semibold transition ${
                 destinationType === "sucursal"
                   ? "border-rose-deep bg-rose-whisper text-rose-deep"
                   : "border-rose-pastel text-ink-soft hover:border-rose-medium/50"
-              }`}
+              } ${cpLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             >
               <MapPin className="w-4 h-4 inline mr-1" /> Retiro en sucursal
             </button>
@@ -638,7 +657,13 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
             <Field label="WhatsApp *" value={address.telefono} onChange={(v) => setAddress({ ...address, telefono: v })} placeholder="+5491141..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="CP *" value={address.codigoPostal} onChange={(v) => setAddress({ ...address, codigoPostal: v.replace(/\D/g, "").slice(0, 4) })} placeholder="1414" />
+            <Field
+              label={cpLocked ? "CP * 🔒" : "CP *"}
+              value={address.codigoPostal}
+              onChange={(v) => !cpLocked && setAddress({ ...address, codigoPostal: v.replace(/\D/g, "").slice(0, 4) })}
+              placeholder="1414"
+              disabled={cpLocked}
+            />
             <Field label="Localidad *" value={address.localidad} onChange={(v) => setAddress({ ...address, localidad: v })} placeholder="CABA" />
           </div>
           <div>
@@ -890,20 +915,24 @@ function Field({
   value,
   onChange,
   placeholder,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-ink-secondary mb-1.5">{label}</label>
       <input
-        className="input"
+        className={`input ${disabled ? "bg-rose-pastel/40 cursor-not-allowed text-ink-soft" : ""}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
+        readOnly={disabled}
       />
     </div>
   );

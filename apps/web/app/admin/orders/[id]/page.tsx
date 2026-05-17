@@ -83,26 +83,49 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
       }).eq("id", orderId);
       if (orderErr) throw orderErr;
 
-      // 2) Si la clienta pidió envío, crear shipment
+      // 2) Si la clienta pidió envío, crear shipment usando el carrier elegido en checkout
       if (order.wants_shipping !== false) {
         const description = (order.order_items ?? [])
           .map((it: any) => `${it.quantity}x ${it.description}`)
           .join(", ")
           .slice(0, 200) || `Pedido ${order.order_number}`;
 
-        const { error: shipErr } = await supabase.from("shipments").insert({
+        // Si la clienta eligió Correo Argentino en el checkout, ya pagó el envío;
+        // el shipment queda con CP + tipo de destino + costo ya cargado.
+        const shippingMeta = order.shipping_address ?? {};
+        const carrierSelected = shippingMeta.carrier_selected ?? "personalizado";
+        const correoQuote = shippingMeta.correo_quote ?? null;
+
+        const baseRow: any = {
           user_id: order.user_id,
           order_id: order.id,
           status: "pending_address",
-          carrier: "personalizado",
+          carrier: carrierSelected,
           description,
-          weight_grams: 500,            // default; admin lo ajusta luego
+          weight_grams: 500, // default; admin lo ajusta luego
           declared_value: order.subtotal,
           destination_type: order.destination_type_requested ?? "domicilio",
           created_by: user?.id ?? null,
-        });
+        };
+
+        if (carrierSelected === "correo_argentino" && correoQuote?.cost && correoQuote?.cp) {
+          baseRow.cost_quoted = correoQuote.cost;
+          baseRow.cost_charged = correoQuote.cost;
+          baseRow.destination_address = {
+            codigoPostal: correoQuote.cp,
+            full_name: shippingMeta.full_name ?? null,
+            telefono: shippingMeta.phone ?? null,
+            // resto lo completa la clienta en el wizard (calle, número, localidad, etc)
+          };
+          // El envío ya está pagado junto con la orden — saltamos directo a "paid"
+          baseRow.status = "pending_address";
+          baseRow.paid_at = now;
+        }
+
+        const { error: shipErr } = await supabase.from("shipments").insert(baseRow);
         if (shipErr) throw shipErr;
-        toast.success("Pago aprobado + envío creado. La clienta ahora puede llenar el formulario 🌸");
+        const carrierLabel = carrierSelected === "correo_argentino" ? "Correo Argentino" : carrierSelected === "andreani" ? "Andreani" : "Personalizado";
+        toast.success(`Pago aprobado + envío creado (${carrierLabel}). La clienta ahora puede completar la dirección 🌸`);
       } else {
         toast.success("Pago aprobado 🌸");
       }

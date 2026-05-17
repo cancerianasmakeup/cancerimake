@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, Home, MapPin } from "lucide-react";
+import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, Home, MapPin, Package, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { formatPrice, calcPackageFromCart, describePackage, isValidEmail, isValidPhoneAR } from "@cancerianas/shared";
+import { formatPrice, calcPackageFromCart, calcCorreoArgentinoQuote, describePackage, isValidEmail, isValidPhoneAR } from "@cancerianas/shared";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import TransferInstructions from "@/components/TransferInstructions";
@@ -24,8 +24,11 @@ export default function CheckoutClient() {
   const [shippingExtras, setShippingExtras] = useState<any>({});
   const [brand, setBrand] = useState<{ whatsapp?: string }>({});
   const [selectedMethod, setSelectedMethod] = useState<"transfer" | "mercadopago" | null>(null);
+  // Carrier elegido + CP (solo Correo Argentino calcula precio en checkout).
+  const [carrier, setCarrier] = useState<"correo_argentino" | "andreani" | "personalizado">("correo_argentino");
   // Modalidad de entrega: domicilio o sucursal (el detalle se completa después en /shipment).
   const [destinationType, setDestinationType] = useState<"domicilio" | "sucursal">("domicilio");
+  const [cp, setCp] = useState("");
   // Orden creada tras confirmar transferencia — guardamos id + datos para mostrar TransferInstructions + uploader.
   const [confirmedOrder, setConfirmedOrder] = useState<{
     id: string; order_number: string; total: number;
@@ -83,6 +86,17 @@ export default function CheckoutClient() {
   );
   const pkgDescription = describePackage(items, pkg);
 
+  // Cotización Correo Argentino — solo se calcula si carrier=correo_argentino y CP válido.
+  const correoQuote = useMemo(() => {
+    if (carrier !== "correo_argentino") return null;
+    const trimmed = cp.trim();
+    if (!/^\d{4}$/.test(trimmed)) return null;
+    return calcCorreoArgentinoQuote(trimmed, pkg.weight_grams, destinationType);
+  }, [carrier, cp, destinationType, pkg.weight_grams]);
+
+  const shippingCost = correoQuote?.ok ? (correoQuote.cost ?? 0) : 0;
+  const total = subtotal + shippingCost;
+
   async function removeItem(id: string) {
     await supabase.from("cart_items").delete().eq("id", id);
     setItems(items.filter((i) => i.id !== id));
@@ -99,6 +113,25 @@ export default function CheckoutClient() {
         await supabase.from("profiles").update({ full_name: contact.full_name, phone: contact.phone }).eq("id", user.id);
       }
 
+      // Validaciones específicas por carrier
+      if (carrier === "correo_argentino") {
+        if (!cp.trim()) return toast.error("Ingresá el código postal para calcular el envío");
+        if (!correoQuote) return toast.error("El código postal no es válido. Revisalo.");
+        if (!correoQuote.ok) {
+          if (correoQuote.reason === "over_max_weight") {
+            return toast.error("Tu pedido supera 5kg — elegí Envío Personalizado para que te coticemos por WhatsApp.");
+          }
+          return toast.error("No pudimos calcular el envío. Revisá el CP.");
+        }
+      }
+
+      const shippingMeta = {
+        carrier,
+        ...(carrier === "correo_argentino" && correoQuote?.ok
+          ? { cp: cp.trim(), zone: correoQuote.zone, tier: correoQuote.tier, destination_type: destinationType, cost: correoQuote.cost }
+          : {}),
+      };
+
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -106,10 +139,16 @@ export default function CheckoutClient() {
           status: "pending",
           source: "catalog",
           subtotal,
-          shipping_cost: 0,
-          total: subtotal,
+          shipping_cost: shippingCost,
+          total,
           payment_method: method,
-          shipping_address: { full_name: contact.full_name, email: contact.email, phone: contact.phone },
+          shipping_address: {
+            full_name: contact.full_name,
+            email: contact.email,
+            phone: contact.phone,
+            carrier_selected: carrier,
+            correo_quote: carrier === "correo_argentino" ? shippingMeta : null,
+          },
           wants_shipping: true,
           destination_type_requested: destinationType,
         })
@@ -262,32 +301,135 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
-              {/* Modalidad de entrega */}
+              {/* Envío — elegí carrier */}
               <div className="card space-y-3">
                 <h2 className="font-display text-xl">¿Cómo querés recibirlo?</h2>
-                <p className="text-xs text-ink-soft -mt-2">Después de confirmar el pago te pedimos la dirección o la sucursal exacta.</p>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${destinationType === "domicilio" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
-                    <input type="radio" name="destination" className="mt-1 accent-rose-deep" checked={destinationType === "domicilio"} onChange={() => setDestinationType("domicilio")} />
-                    <div>
+                <p className="text-xs text-ink-soft -mt-2">Elegí el medio de envío. Si elegís Correo Argentino te calculamos el precio ahora.</p>
+
+                <div className="space-y-3">
+                  {/* Correo Argentino */}
+                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${carrier === "correo_argentino" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                    <input type="radio" name="carrier" className="mt-1 accent-rose-deep" checked={carrier === "correo_argentino"} onChange={() => setCarrier("correo_argentino")} />
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <Home className="w-5 h-5 text-rose-deep" />
-                        <span className="font-semibold text-ink-primary">Envío a domicilio</span>
+                        <Truck className="w-5 h-5 text-rose-deep" />
+                        <span className="font-semibold text-ink-primary">Correo Argentino</span>
+                        <span className="text-xs bg-success/20 text-success font-bold rounded-full px-2 py-0.5">Precio al toque</span>
                       </div>
-                      <p className="text-xs text-ink-soft mt-1">Te lo llevan hasta la puerta de tu casa.</p>
+                      <p className="text-xs text-ink-soft mt-1">Lo calculamos al instante por código postal + peso. Lo pagás junto con el pedido.</p>
                     </div>
                   </label>
-                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${destinationType === "sucursal" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
-                    <input type="radio" name="destination" className="mt-1 accent-rose-deep" checked={destinationType === "sucursal"} onChange={() => setDestinationType("sucursal")} />
-                    <div>
+
+                  {/* Andreani */}
+                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${carrier === "andreani" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                    <input type="radio" name="carrier" className="mt-1 accent-rose-deep" checked={carrier === "andreani"} onChange={() => setCarrier("andreani")} />
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-rose-deep" />
-                        <span className="font-semibold text-ink-primary">Retiro en sucursal</span>
+                        <Package className="w-5 h-5 text-rose-deep" />
+                        <span className="font-semibold text-ink-primary">Andreani</span>
                       </div>
-                      <p className="text-xs text-ink-soft mt-1">Lo retirás en una sucursal cercana de correo (suele salir más barato).</p>
+                      <p className="text-xs text-ink-soft mt-1">Después de aprobar el pago de los productos, te mandamos el link para pagar Andreani aparte.</p>
+                    </div>
+                  </label>
+
+                  {/* Personalizado */}
+                  <label className={`flex items-start gap-3 cursor-pointer rounded-2xl border-2 p-4 transition ${carrier === "personalizado" ? "border-rose-deep bg-rose-whisper" : "border-rose-pastel hover:border-rose-medium/50"}`}>
+                    <input type="radio" name="carrier" className="mt-1 accent-rose-deep" checked={carrier === "personalizado"} onChange={() => setCarrier("personalizado")} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="w-5 h-5 text-rose-deep" />
+                        <span className="font-semibold text-ink-primary">Envío personalizado</span>
+                      </div>
+                      <p className="text-xs text-ink-soft mt-1">Después del pago coordinamos el envío con vos por chat (moto, otro courier, retiro, etc).</p>
                     </div>
                   </label>
                 </div>
+
+                {/* Sub-form para Correo Argentino */}
+                {carrier === "correo_argentino" && (
+                  <div className="rounded-2xl bg-rose-pastel/30 border border-rose-pastel p-4 space-y-3">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 p-3 transition ${destinationType === "domicilio" ? "border-rose-deep bg-white" : "border-rose-pastel bg-white/50"}`}>
+                        <input type="radio" name="destination" className="mt-0.5 accent-rose-deep" checked={destinationType === "domicilio"} onChange={() => setDestinationType("domicilio")} />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <Home className="w-4 h-4 text-rose-deep" />
+                            <span className="font-semibold text-sm">A domicilio</span>
+                          </div>
+                          <p className="text-[11px] text-ink-soft mt-0.5">Te lo llevan a la puerta.</p>
+                        </div>
+                      </label>
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 p-3 transition ${destinationType === "sucursal" ? "border-rose-deep bg-white" : "border-rose-pastel bg-white/50"}`}>
+                        <input type="radio" name="destination" className="mt-0.5 accent-rose-deep" checked={destinationType === "sucursal"} onChange={() => setDestinationType("sucursal")} />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-rose-deep" />
+                            <span className="font-semibold text-sm">Retiro en sucursal</span>
+                          </div>
+                          <p className="text-[11px] text-ink-soft mt-0.5">Más barato.</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-ink-primary block mb-1">Código postal</label>
+                      <input
+                        className="input"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="Ej: 1744"
+                        value={cp}
+                        onChange={(e) => setCp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      />
+                    </div>
+
+                    {cp.trim() && correoQuote && (
+                      correoQuote.ok ? (
+                        <div className="rounded-xl bg-success/10 border border-success/40 p-3 text-sm">
+                          <p className="font-bold text-success">Envío Correo Argentino: {formatPrice(correoQuote.cost!)}</p>
+                          <p className="text-xs text-ink-secondary mt-0.5">Zona {correoQuote.zone} · hasta {correoQuote.tier} · {destinationType === "domicilio" ? "domicilio" : "sucursal"} · peso paquete ~{(pkg.weight_grams / 1000).toFixed(2)} kg</p>
+                        </div>
+                      ) : correoQuote.reason === "over_max_weight" ? (
+                        <div className="rounded-xl bg-warning/10 border border-warning/40 p-3 text-sm">
+                          <p className="font-bold text-ink-primary">Tu pedido pesa más de 5kg.</p>
+                          <p className="text-xs text-ink-secondary mt-0.5">Correo Argentino no acepta este peso. Elegí <strong>Envío personalizado</strong> y te cotizamos por WhatsApp.</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl bg-error/10 border border-error/40 p-3 text-sm text-error">
+                          Código postal inválido. Tiene que tener 4 dígitos.
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* Sub-form para Andreani / Personalizado: solo destination type */}
+                {carrier !== "correo_argentino" && (
+                  <div className="rounded-2xl bg-rose-pastel/30 border border-rose-pastel p-4">
+                    <p className="text-sm font-semibold text-ink-primary mb-2">Modalidad preferida</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 p-3 transition ${destinationType === "domicilio" ? "border-rose-deep bg-white" : "border-rose-pastel bg-white/50"}`}>
+                        <input type="radio" name="destination" className="mt-0.5 accent-rose-deep" checked={destinationType === "domicilio"} onChange={() => setDestinationType("domicilio")} />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <Home className="w-4 h-4 text-rose-deep" />
+                            <span className="font-semibold text-sm">A domicilio</span>
+                          </div>
+                        </div>
+                      </label>
+                      <label className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 p-3 transition ${destinationType === "sucursal" ? "border-rose-deep bg-white" : "border-rose-pastel bg-white/50"}`}>
+                        <input type="radio" name="destination" className="mt-0.5 accent-rose-deep" checked={destinationType === "sucursal"} onChange={() => setDestinationType("sucursal")} />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-rose-deep" />
+                            <span className="font-semibold text-sm">Retiro en sucursal</span>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Método de pago */}
@@ -338,11 +480,25 @@ export default function CheckoutClient() {
               <div className="rounded-2xl bg-rose-pastel/50 p-4 flex items-start gap-3">
                 <Truck className="w-5 h-5 text-rose-deep flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <strong className="text-ink-primary">Envío en dos pasos.</strong>
-                  <ul className="mt-1 space-y-1 text-ink-secondary">
-                    <li>1️⃣ Confirmás y pagás los productos.</li>
-                    <li>2️⃣ Cuando confirmemos el pago, te mandamos el link para elegir el envío.</li>
-                  </ul>
+                  {carrier === "correo_argentino" ? (
+                    <>
+                      <strong className="text-ink-primary">Correo Argentino — pagás todo junto.</strong>
+                      <p className="mt-1 text-ink-secondary">Productos + envío en un solo pago.</p>
+                    </>
+                  ) : carrier === "andreani" ? (
+                    <>
+                      <strong className="text-ink-primary">Andreani — envío aparte.</strong>
+                      <ul className="mt-1 space-y-1 text-ink-secondary">
+                        <li>1️⃣ Pagás los productos.</li>
+                        <li>2️⃣ Te mandamos el link para pagar Andreani.</li>
+                      </ul>
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-ink-primary">Envío personalizado.</strong>
+                      <p className="mt-1 text-ink-secondary">Después del pago coordinamos con vos por chat.</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -366,17 +522,28 @@ export default function CheckoutClient() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-soft">Envío</span>
-                  <span className="text-ink-soft italic">se cotiza aparte</span>
+                  {carrier === "correo_argentino" ? (
+                    correoQuote?.ok
+                      ? <span className="font-semibold">{formatPrice(correoQuote.cost!)}</span>
+                      : <span className="text-ink-soft italic">{cp.trim() ? "—" : "ingresá CP"}</span>
+                  ) : (
+                    <span className="text-ink-soft italic">se cotiza aparte</span>
+                  )}
                 </div>
               </div>
               <div className="border-t border-rose-pastel pt-3 flex justify-between items-baseline">
                 <span className="font-display text-xl">Total</span>
-                <span className="font-display text-2xl font-bold text-rose-deep">{formatPrice(subtotal)}</span>
+                <span className="font-display text-2xl font-bold text-rose-deep">{formatPrice(total)}</span>
               </div>
 
               <button
                 onClick={() => selectedMethod && createOrder(selectedMethod)}
-                disabled={submitting || !selectedMethod || availableMethods.length === 0}
+                disabled={
+                  submitting ||
+                  !selectedMethod ||
+                  availableMethods.length === 0 ||
+                  (carrier === "correo_argentino" && !correoQuote?.ok)
+                }
                 className="btn-primary w-full py-4 disabled:opacity-50"
               >
                 {submitting
