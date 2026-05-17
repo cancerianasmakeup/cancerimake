@@ -249,11 +249,19 @@ export default function CustomersExplorer({
               </button>
             )}
             <a
+              href={`data:text/plain;charset=utf-8,${encodeURIComponent(toEmailsOnly(filteredRows))}`}
+              download={`emails-${tab}-${new Date().toISOString().slice(0, 10)}.txt`}
+              className="inline-flex items-center gap-1 text-rose-deep hover:underline font-semibold"
+              title="Solo emails (uno por línea, para pegar en mailing)"
+            >
+              <Mail className="w-3 h-3" /> Solo emails
+            </a>
+            <a
               href={`data:text/csv;charset=utf-8,${encodeURIComponent(toCsv(filteredRows, now))}`}
               download={`contactos-${tab}-${new Date().toISOString().slice(0, 10)}.csv`}
               className="inline-flex items-center gap-1 text-rose-deep hover:underline font-semibold"
             >
-              <Download className="w-3 h-3" /> Exportar CSV
+              <Download className="w-3 h-3" /> CSV completo
             </a>
           </div>
         </div>
@@ -413,4 +421,14 @@ function toCsv(rows: CustomerRow[], now: Date): string {
       .join(",");
   }).join("\n");
   return `${head}\n${body}`;
+}
+
+/** Solo los emails válidos, uno por línea, deduplicados (para mailing). */
+function toEmailsOnly(rows: CustomerRow[]): string {
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const email = (r.email ?? "").trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) seen.add(email);
+  }
+  return Array.from(seen).join("\n");
 }
