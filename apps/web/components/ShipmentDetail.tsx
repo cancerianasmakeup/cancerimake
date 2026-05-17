@@ -534,50 +534,111 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
                 </p>
               </div>
             ) : shipment.destination_type === "sucursal" ? (
-              <div>
-                <p className="text-xs uppercase font-bold text-ink-soft tracking-wider mb-2">
+              <div className="space-y-3">
+                <p className="text-xs uppercase font-bold text-ink-soft tracking-wider">
                   📍 Retira en sucursal
                 </p>
-                <p className="font-semibold text-ink-primary">{branch?.nombre || branch?.name || "—"}</p>
-                <p className="text-sm text-ink-secondary">
-                  {branch?.direccion || branch?.address || ""}
-                  {branch?.localidad && ` · ${branch.localidad}`}
-                  {branch?.codigoPostal && ` · CP ${branch.codigoPostal}`}
-                </p>
-                {(branch?.lat && branch?.lng) && (
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${branch.lat},${branch.lng}`}
-                    target="_blank"
-                    rel="noopener"
-                    className="inline-flex items-center gap-1 text-xs text-rose-deep hover:underline mt-1.5 font-semibold"
-                  >
-                    Ver en mapa →
-                  </a>
-                )}
-                {branch?.operator && (
-                  <p className="text-xs text-ink-soft mt-1 uppercase tracking-wide font-semibold">{branch.operator}</p>
+
+                {/* Sucursal elegida */}
+                <div>
+                  <p className="font-semibold text-ink-primary">{branch?.nombre || branch?.name || "—"}</p>
+                  {(branch?.direccion || branch?.address) && (
+                    <p className="text-sm text-ink-secondary">{branch?.direccion || branch?.address}</p>
+                  )}
+                  {(branch?.lat && branch?.lng) && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${branch.lat},${branch.lng}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1 text-xs text-rose-deep hover:underline mt-1 font-semibold"
+                    >
+                      Ver en mapa →
+                    </a>
+                  )}
+                  {branch?.operator && (
+                    <p className="text-xs text-ink-soft mt-1 uppercase tracking-wide font-semibold">{branch.operator}</p>
+                  )}
+                </div>
+
+                {/* Ubicación (CP / localidad / provincia) — del branch o del form */}
+                <div className="grid grid-cols-3 gap-3 pt-2 border-t border-rose-pastel">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">Provincia</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">
+                      {branch?.region || branch?.provincia || dest?.region || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">Localidad</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">
+                      {branch?.localidad || dest?.localidad || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">CP</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">
+                      {branch?.codigoPostal || dest?.codigoPostal || "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contacto de la clienta */}
+                {(dest?.nombre_completo || dest?.telefono || dest?.documento) && (
+                  <div className="pt-2 border-t border-rose-pastel">
+                    {dest?.nombre_completo && (
+                      <p className="text-sm font-semibold text-ink-primary">{dest.nombre_completo}</p>
+                    )}
+                    <p className="text-sm text-ink-secondary">
+                      {dest?.telefono && <>📱 {dest.telefono}</>}
+                      {dest?.telefono && dest?.documento && " · "}
+                      {dest?.documento && <>DNI {dest.documento}</>}
+                    </p>
+                  </div>
                 )}
               </div>
             ) : (
-              <div>
-                <p className="text-xs uppercase font-bold text-ink-soft tracking-wider mb-2">
+              <div className="space-y-3">
+                <p className="text-xs uppercase font-bold text-ink-soft tracking-wider">
                   🏠 Envío a domicilio
                 </p>
-                <p className="font-semibold text-ink-primary">{dest?.nombre_completo}</p>
-                <p className="text-sm text-ink-secondary">
-                  {dest?.calle} {dest?.numero}
-                  {dest?.piso ? `, Piso ${dest.piso}` : ""}
-                  {dest?.depto ? ` Depto ${dest.depto}` : ""}
-                </p>
-                <p className="text-sm text-ink-secondary">
-                  {dest?.localidad}, {dest?.region} · CP {dest?.codigoPostal}
-                </p>
-                {dest?.referencias && (
-                  <p className="text-xs text-ink-soft mt-1 italic">📍 {dest.referencias}</p>
-                )}
-                <p className="text-sm text-ink-secondary mt-2">
-                  📱 {dest?.telefono} · DNI {dest?.documento}
-                </p>
+
+                <div>
+                  <p className="font-semibold text-ink-primary">{dest?.nombre_completo}</p>
+                  <p className="text-sm text-ink-secondary">
+                    {dest?.calle} {dest?.numero}
+                    {dest?.piso ? `, Piso ${dest.piso}` : ""}
+                    {dest?.depto ? ` Depto ${dest.depto}` : ""}
+                  </p>
+                  {dest?.entre_calles && (
+                    <p className="text-sm text-ink-secondary">
+                      Entre calles: <span className="font-medium">{dest.entre_calles}</span>
+                    </p>
+                  )}
+                  {dest?.referencias && (
+                    <p className="text-xs text-ink-soft mt-1 italic">📍 {dest.referencias}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 pt-2 border-t border-rose-pastel">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">Provincia</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">{dest?.region || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">Localidad</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">{dest?.localidad || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-ink-soft tracking-wider">CP</p>
+                    <p className="text-sm font-semibold text-ink-primary mt-0.5">{dest?.codigoPostal || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-rose-pastel">
+                  <p className="text-sm text-ink-secondary">
+                    📱 {dest?.telefono} · DNI {dest?.documento}
+                  </p>
+                </div>
               </div>
             )}
           </div>
