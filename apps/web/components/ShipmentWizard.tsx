@@ -80,6 +80,7 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
     depto: "",
     localidad: "",
     region: "Buenos Aires",
+    entre_calles: "",
     referencias: "",
   });
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
@@ -290,34 +291,51 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
 
   async function requestCustomQuote() {
     if (!shipment) return;
-    // Validación común
+
+    // Validaciones obligatorias para AMBOS casos (Correo prepago o Personalizado)
     if (!address.nombre_completo.trim()) return toast.error("Falta nombre completo");
     if (!address.documento.trim()) return toast.error("Falta DNI");
     if (!address.telefono.trim()) return toast.error("Falta teléfono / WhatsApp");
     if (address.codigoPostal.length !== 4) return toast.error("CP inválido (4 dígitos)");
+    if (!address.region || !address.region.trim()) return toast.error("Falta provincia");
+    if (!address.localidad.trim()) return toast.error("Falta localidad");
 
-    // Validación específica
     if (destinationType === "domicilio") {
-      if (!address.calle.trim() || !address.numero.trim()) return toast.error("Falta calle/número");
-      if (!address.localidad.trim()) return toast.error("Falta localidad");
+      if (!address.calle.trim()) return toast.error("Falta calle");
+      if (!address.numero.trim()) return toast.error("Falta número");
+      if (!address.entre_calles.trim()) return toast.error("Indicá las entre calles (para que el cartero encuentre fácil)");
     } else if (destinationType === "sucursal") {
-      if (!address.localidad.trim()) return toast.error("Falta tu localidad — así te recomendamos la sucursal más cerca");
+      if (!selectedBranch || !selectedBranch.nombre) {
+        return toast.error("Indicá a qué sucursal querés retirar");
+      }
     }
 
+    // Si el shipment ya viene con envío pagado (Correo Argentino del checkout),
+    // NO se pide cotización personalizada — solo se completa la dirección.
+    // El carrier y cost_charged se mantienen como ya están.
+    const alreadyPaid = cpLocked;
+
     setBusy(true);
-    // Hacemos update directo (no RPC) para incluir destination_type y branch si aplica.
-    // RLS permite update mientras status sea pending_address (USING se evalúa antes del cambio).
     const updates: Record<string, any> = {
-      status: "pending_custom_quote",
-      carrier: "personalizado",
       destination_type: destinationType,
       destination_address: address,
-      custom_quote_message: customMessage || null,
     };
-    // Si eligió sucursal y picó una específica, la guardamos como snapshot
+
+    if (alreadyPaid) {
+      // Correo Argentino prepago: dirección completa = listo para despachar.
+      updates.status = "paid";
+      // Carrier se mantiene (correo_argentino). No tocamos.
+    } else {
+      // Andreani/Personalizado deferred: admin tiene que cotizar.
+      updates.status = "pending_custom_quote";
+      updates.carrier = "personalizado";
+      updates.custom_quote_message = customMessage || null;
+    }
+
     if (destinationType === "sucursal" && selectedBranch) {
       updates.destination_branch = selectedBranch;
     }
+
     const { error } = await supabase
       .from("shipments")
       .update(updates)
@@ -327,8 +345,14 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
       toast.error(error.message);
       return;
     }
-    toast.success("Listo, te avisamos cuando tengamos el precio del envío 🌸");
-    setStep("custom-waiting");
+
+    if (alreadyPaid) {
+      toast.success("Dirección confirmada — preparamos tu paquete 🌸");
+      setStep("done");
+    } else {
+      toast.success("Listo, te avisamos cuando tengamos el precio del envío 🌸");
+      setStep("custom-waiting");
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -610,7 +634,9 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
               {destinationType === "sucursal" ? "Tus datos para retirar 📍" : "¿A dónde te lo mandamos? 🏠"}
             </h2>
             <p className="text-sm text-ink-soft mt-1">
-              Completá tus datos. Cuando los recibamos te avisamos cuánto sale tu envío para que lo pagues.
+              {cpLocked
+                ? "Completá tu dirección. Tu envío ya está pagado — apenas lo confirmes, preparamos el paquete."
+                : "Completá tus datos. Cuando los recibamos te avisamos cuánto sale tu envío para que lo pagues."}
             </p>
           </div>
 
@@ -685,6 +711,7 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
                 <Field label="Piso" value={address.piso} onChange={(v) => setAddress({ ...address, piso: v })} placeholder="3" />
                 <Field label="Depto" value={address.depto} onChange={(v) => setAddress({ ...address, depto: v })} placeholder="B" />
               </div>
+              <Field label="Entre calles *" value={address.entre_calles} onChange={(v) => setAddress({ ...address, entre_calles: v })} placeholder="Av. del Libertador y Av. Cabildo" />
               <Field label="Referencias (opcional)" value={address.referencias} onChange={(v) => setAddress({ ...address, referencias: v })} placeholder="Casa con portón verde, timbre 'Cancerianas'" />
             </>
           )}
@@ -714,8 +741,17 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           </div>
 
           <button onClick={requestCustomQuote} disabled={busy} className="btn-primary w-full">
-            <HandCoins className="w-5 h-5" />
-            {busy ? "Enviando..." : "Enviar mis datos"}
+            {cpLocked ? (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                {busy ? "Confirmando..." : "Confirmar dirección"}
+              </>
+            ) : (
+              <>
+                <HandCoins className="w-5 h-5" />
+                {busy ? "Enviando..." : "Enviar mis datos"}
+              </>
+            )}
           </button>
         </div>
       )}
