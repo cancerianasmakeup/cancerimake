@@ -305,8 +305,10 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
       if (!address.numero.trim()) return toast.error("Falta número");
       if (!address.entre_calles.trim()) return toast.error("Indicá las entre calles (para que el cartero encuentre fácil)");
     } else if (destinationType === "sucursal") {
-      if (!selectedBranch || !selectedBranch.nombre) {
-        return toast.error("Indicá a qué sucursal querés retirar");
+      const branchName = (selectedBranch as any)?.name ?? (selectedBranch as any)?.nombre;
+      const branchAddress = (selectedBranch as any)?.address ?? (selectedBranch as any)?.direccion;
+      if (!selectedBranch || !branchName || !branchAddress) {
+        return toast.error("Cargá la sucursal: nombre + dirección (manual arriba o buscá automático)");
       }
     }
 
@@ -717,10 +719,73 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
           )}
 
           {destinationType === "sucursal" && (
-            <BranchPicker
-              selected={selectedBranch as PickedBranch | null}
-              onSelect={(b) => setSelectedBranch(b)}
-            />
+            <div className="space-y-4">
+              {/* ===== Opción 1: cargar sucursal MANUAL ===== */}
+              <div className="rounded-2xl border-2 border-rose-deep/30 bg-rose-whisper/40 p-4 space-y-3">
+                <div>
+                  <p className="font-display text-base text-ink-primary flex items-center gap-2">
+                    📝 Cargar sucursal manualmente
+                  </p>
+                  <p className="text-xs text-ink-soft mt-0.5">
+                    Si ya sabés a qué sucursal querés retirar, escribila acá.
+                  </p>
+                </div>
+                <Field
+                  label="Nombre de la sucursal *"
+                  value={selectedBranch?.source === "manual" ? selectedBranch?.name || selectedBranch?.nombre || "" : ""}
+                  onChange={(v) =>
+                    setSelectedBranch({
+                      ...(selectedBranch?.source === "manual" ? selectedBranch : {}),
+                      name: v,
+                      nombre: v,
+                      address: selectedBranch?.source === "manual" ? selectedBranch?.address || selectedBranch?.direccion || "" : "",
+                      direccion: selectedBranch?.source === "manual" ? selectedBranch?.address || selectedBranch?.direccion || "" : "",
+                      localidad: address.localidad,
+                      region: address.region,
+                      codigoPostal: address.codigoPostal,
+                      source: "manual",
+                    })
+                  }
+                  placeholder="Ej: Correo Argentino sucursal Reconquista"
+                />
+                <Field
+                  label="Dirección de la sucursal *"
+                  value={selectedBranch?.source === "manual" ? selectedBranch?.address || selectedBranch?.direccion || "" : ""}
+                  onChange={(v) =>
+                    setSelectedBranch({
+                      ...(selectedBranch?.source === "manual" ? selectedBranch : {}),
+                      name: selectedBranch?.source === "manual" ? selectedBranch?.name || selectedBranch?.nombre || "" : "",
+                      nombre: selectedBranch?.source === "manual" ? selectedBranch?.name || selectedBranch?.nombre || "" : "",
+                      address: v,
+                      direccion: v,
+                      localidad: address.localidad,
+                      region: address.region,
+                      codigoPostal: address.codigoPostal,
+                      source: "manual",
+                    })
+                  }
+                  placeholder="Ej: 9 de Julio 745"
+                />
+                {selectedBranch?.source === "manual" && (selectedBranch?.name || selectedBranch?.nombre) && (selectedBranch?.address || selectedBranch?.direccion) && (
+                  <div className="rounded-xl bg-success/10 border border-success/30 p-2.5 text-xs text-success font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Sucursal cargada manualmente ✓
+                  </div>
+                )}
+              </div>
+
+              {/* Separador "o" */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-rose-pastel"></div>
+                <span className="text-xs uppercase font-bold text-ink-soft tracking-wider">o buscar automáticamente</span>
+                <div className="flex-1 h-px bg-rose-pastel"></div>
+              </div>
+
+              {/* ===== Opción 2: buscar automáticamente con GPS ===== */}
+              <BranchPicker
+                selected={selectedBranch?.source === "gps" ? (selectedBranch as PickedBranch) : null}
+                onSelect={(b) => setSelectedBranch(b ? { ...b, source: "gps" } : null)}
+              />
+            </div>
           )}
 
           <div>
