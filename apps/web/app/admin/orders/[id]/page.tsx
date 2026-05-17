@@ -74,6 +74,10 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
       const { data: { user } } = await supabase.auth.getUser();
       const now = new Date().toISOString();
 
+      // Guardamos si la orden ya estaba "paid" antes — si lo estaba (caso re-aprobación
+      // para crear shipment) NO descontamos stock de nuevo.
+      const wasAlreadyPaid = order.status === "paid";
+
       // 1) Mover orden a paid + marcar quién/cuándo aprobó
       const { error: orderErr } = await supabase.from("orders").update({
         status: "paid",
@@ -82,6 +86,30 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
         payment_approved_by: user?.id ?? null,
       }).eq("id", orderId);
       if (orderErr) throw orderErr;
+
+      // 1.b) Descontar stock por cada item — solo si la orden no estaba ya pagada
+      //      (en pagos vía MP el webhook descuenta; acá manejamos transferencia/manual).
+      if (!wasAlreadyPaid) {
+        for (const it of (order.order_items ?? [])) {
+          try {
+            if (it.variant_id) {
+              await supabase.rpc("decrement_variant_stock", {
+                p_variant_id: it.variant_id,
+                p_qty: it.quantity,
+              });
+            } else if (it.product_id) {
+              await supabase.rpc("decrement_product_stock", {
+                p_product_id: it.product_id,
+                p_qty: it.quantity,
+              });
+            }
+          } catch (stockErr) {
+            // No abortamos la aprobación por un error de stock individual —
+            // logueamos para que admin pueda corregir manualmente.
+            console.error("decrement_stock falló para item", it.id, stockErr);
+          }
+        }
+      }
 
       // 2) Si la clienta pidió envío, crear shipment usando el carrier elegido en checkout
       if (order.wants_shipping !== false) {
