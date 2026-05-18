@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Truck, CheckCircle2, Package, Banknote, MessageCircle,
-  FileText, Image as ImageIcon, ExternalLink, Trash2,
+  FileText, Image as ImageIcon, ExternalLink, Trash2, Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -284,6 +284,16 @@ export default function OrderDetail({ params }: { params: Promise<{ id: string }
             {new Date(order.created_at).toLocaleString("es-AR")}
           </p>
         </div>
+        <Link
+          href={`/admin/orders/${order.id}/print`}
+          target="_blank"
+          rel="noopener"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-deep text-white font-semibold text-sm hover:bg-rose-deep/90 shadow-soft"
+          title="Abrir versión imprimible para preparar el envío"
+        >
+          <Printer className="w-4 h-4" />
+          Imprimir orden
+        </Link>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
