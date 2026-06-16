@@ -77,7 +77,17 @@ export async function generateRemitoPDF(remito: Remito) {
   // ========================
   // COLORES PROFESIONALES
   // ========================
-  const colors = {
+  type RGB = [number, number, number];
+  const colors: {
+    roseDeep: RGB;
+    rosePrimary: RGB;
+    roseLight: RGB;
+    roseSoft: RGB;
+    inkPrimary: RGB;
+    inkSecondary: RGB;
+    gray: RGB;
+    white: RGB;
+  } = {
     roseDeep: [230, 107, 133],
     rosePrimary: [255, 143, 163],
     roseLight: [255, 229, 236],
@@ -94,7 +104,7 @@ export async function generateRemitoPDF(remito: Remito) {
   const addWatermarkPage = () => {
     if (logoData) {
       try {
-        doc.setGlobalAlpha(0.12);
+        doc.setGState({ opacity: 0.12 });
         doc.addImage(
           logoData,
           "PNG",
@@ -103,7 +113,7 @@ export async function generateRemitoPDF(remito: Remito) {
           80,
           80
         );
-        doc.setGlobalAlpha(1);
+        doc.setGState({ opacity: 1 });
       } catch (error) {
         console.warn("Error adding watermark:", error);
       }
