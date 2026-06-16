@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Remito, RemitItem } from "@/types/remito";
-import { formatPrice } from "@/lib/utils";
 import { Trash2, Plus, Download, Eye, Edit2, Check, X } from "lucide-react";
 
 // Función para formatear precio con separador de miles y moneda argentina
