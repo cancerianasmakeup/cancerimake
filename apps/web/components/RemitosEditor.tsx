@@ -21,6 +21,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
   const [newItemProduct, setNewItemProduct] = useState("");
   const [newItemQuantity, setNewItemQuantity] = useState("1");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const [deposit, setDeposit] = useState(remito.deposit || 0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -73,6 +74,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
       clientPhone,
       notes,
       items,
+      deposit,
     };
     onUpdate(updated);
     alert("Remito guardado");
@@ -93,6 +95,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
         clientPhone,
         notes,
         items,
+        deposit,
       };
       await generateRemitoPDF(updated);
       alert("PDF descargado exitosamente");
@@ -104,10 +107,10 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
     }
   };
 
-  const total = calculateTotal();
-  const subtotal = total;
+  const subtotal = calculateTotal();
   const iva = 0; // IVA ya está incluido en los precios
-  const grandTotal = subtotal;
+  const total = subtotal - deposit;
+  const grandTotal = Math.max(total, 0);
 
   return (
     <div className="max-w-5xl">
@@ -355,8 +358,31 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
               </div>
             </div>
 
+            {/* Deposit Section */}
+            <div className="mb-6 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <label className="block text-sm font-medium text-ink-primary mb-2">
+                Seña (adelanto)
+              </label>
+              <input
+                type="text"
+                value={deposit > 0 ? formatPrice(deposit) : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9,\.]/g, "");
+                  const num = parseFloat(raw.replace(/\./g, "").replace(/,/g, ".")) || 0;
+                  setDeposit(num);
+                }}
+                onBlur={() => {
+                  if (deposit > 0) {
+                    // Ensure formatted display
+                  }
+                }}
+                className="input w-full text-center"
+                placeholder="$ 0,00"
+              />
+            </div>
+
             <div className="flex justify-between mb-6">
-              <span className="font-display text-lg text-ink-primary">Total</span>
+              <span className="font-display text-lg text-ink-primary">Total a pagar</span>
               <span className="font-display text-2xl text-rose-primary">
                 {formatPrice(grandTotal)}
               </span>

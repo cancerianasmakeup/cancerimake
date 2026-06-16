@@ -49,6 +49,7 @@ export default function RemitosManager() {
       clientPhone: "",
       items: [],
       notes: "",
+      deposit: 0,
       status: "draft",
     };
     setRemitos([...remitos, newRemito]);

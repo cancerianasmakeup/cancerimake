@@ -13,5 +13,6 @@ export interface Remito {
   clientPhone: string;
   items: RemitItem[];
   notes: string;
+  deposit: number;
   status: "draft" | "sent";
 }

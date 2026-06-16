@@ -58,6 +58,7 @@ export default function MultipleRemitosLive() {
       clientPhone: client.phone,
       items: [],
       notes: "",
+      deposit: 0,
       status: "draft",
     };
     setRemitos([...remitos, newRemito]);
@@ -235,6 +236,7 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [editedEmail, setEditedEmail] = useState(remito.clientEmail || "");
   const [editedPhone, setEditedPhone] = useState(remito.clientPhone || "");
+  const [depositInput, setDepositInput] = useState<string>(remito.deposit > 0 ? formatPriceARG(remito.deposit) : "");
 
   const handleAddItem = () => {
     const q = Math.max(1, parseInt(quantityInput || "0") || 0);
@@ -252,6 +254,8 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
   };
 
   const subtotal = remito.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const depositNum = depositInput ? parseFloat(depositInput.replace(/\./g, "").replace(/,/g, ".")) : 0;
+  const total = Math.max(subtotal - depositNum, 0);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-rose-primary hover:shadow-lg transition">
@@ -446,16 +450,42 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
           )}
         </div>
 
+        {/* Seña / Adelanto */}
+        <div className="mb-3 p-2 bg-amber-50 rounded border border-amber-200">
+          <label className="text-xs font-semibold text-amber-800 block mb-1">Seña (adelanto):</label>
+          <input
+            type="text"
+            value={depositInput}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDepositInput(v);
+            }}
+            onBlur={() => {
+              const num = depositInput ? parseFloat(depositInput.replace(/\./g, "").replace(/,/g, ".")) : 0;
+              const updated = { ...remito, deposit: num };
+              // Update in parent if needed (for now just local state)
+            }}
+            className="w-full px-2 py-1 text-xs border border-amber-300 rounded text-right"
+            placeholder="$ 0,00"
+          />
+        </div>
+
         {/* Totales */}
         <div className="bg-gradient-to-r from-rose-primary to-rose-deep text-white p-3 rounded-lg text-sm">
           <div className="flex justify-between mb-2">
             <span>Subtotal:</span>
             <span className="font-semibold">{formatPriceARG(subtotal)}</span>
           </div>
+          {depositNum > 0 && (
+            <div className="flex justify-between mb-2 text-amber-100">
+              <span>Menos seña:</span>
+              <span className="font-semibold">-{formatPriceARG(depositNum)}</span>
+            </div>
+          )}
           <div className="border-t border-white opacity-50 my-2"></div>
           <div className="flex justify-between text-lg">
             <span className="font-bold">TOTAL:</span>
-            <span className="font-bold">{formatPriceARG(subtotal)}</span>
+            <span className="font-bold">{formatPriceARG(total)}</span>
           </div>
         </div>
 
