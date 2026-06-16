@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Sparkles, Users, BarChart3, Settings, ArrowLeft, FolderHeart, Truck, PackagePlus, Store, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Sparkles, Users, BarChart3, Settings, ArrowLeft, FolderHeart, Truck, PackagePlus, Store, AlertTriangle, FileText } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { href: "/admin/products", label: "Productos", icon: Package },
   { href: "/admin/low-stock", label: "Poco stock", icon: AlertTriangle },
   { href: "/admin/categories", label: "Categorías", icon: FolderHeart },
+  { href: "/admin/remitos", label: "Remitos", icon: FileText },
   { href: "/admin/orders", label: "Órdenes", icon: ShoppingCart },
   { href: "/admin/shipments", label: "Envíos", icon: Truck },
   { href: "/admin/shipments/pending", label: "Paquetes pendientes", icon: PackagePlus },
