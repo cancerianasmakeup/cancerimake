@@ -63,6 +63,20 @@ export default function MultipleRemitosLive() {
     setRemitos([...remitos, newRemito]);
   };
 
+  const updateClientContact = (tempId: string, newEmail: string, newPhone: string) => {
+    setRemitos(
+      remitos.map((r) =>
+        r.tempId === tempId
+          ? {
+              ...r,
+              clientEmail: newEmail,
+              clientPhone: newPhone,
+            }
+          : r
+      )
+    );
+  };
+
   const updateClientName = (tempId: string, newName: string) => {
     setRemitos(
       remitos.map((r) =>
@@ -148,7 +162,7 @@ export default function MultipleRemitosLive() {
                 onClick={() => addNewRemito(idx)}
                 className="bg-gradient-to-r from-rose-primary to-rose-deep text-white py-2 px-3 rounded-lg hover:shadow-lg transition font-semibold text-sm"
               >
-                + {client.name.split(" ")[2] || `Cliente ${idx + 1}`}
+                Agregar cliente +
               </button>
             ))}
           </div>
@@ -180,6 +194,7 @@ export default function MultipleRemitosLive() {
                   onRemoveItem={removeItemFromRemito}
                   onDelete={deleteRemito}
                   onUpdateClientName={updateClientName}
+                  onUpdateClientContact={updateClientContact}
                 />
               ))}
             </div>
@@ -205,21 +220,34 @@ interface RemitCardProps {
   onRemoveItem: (tempId: string, itemId: string) => void;
   onDelete: (tempId: string) => void;
   onUpdateClientName: (tempId: string, newName: string) => void;
+  onUpdateClientContact: (tempId: string, newEmail: string, newPhone: string) => void;
 }
 
-function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientName }: RemitCardProps) {
+function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientName, onUpdateClientContact }: RemitCardProps) {
   const [product, setProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState(0);
+  const [quantityInput, setQuantityInput] = useState<string>(String(1));
+  const [priceInput, setPriceInput] = useState<string>(formatPriceARG(0));
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(remito.clientName);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [editedEmail, setEditedEmail] = useState(remito.clientEmail || "");
+  const [editedPhone, setEditedPhone] = useState(remito.clientPhone || "");
 
   const handleAddItem = () => {
-    if (product.trim() && quantity > 0 && price > 0) {
-      onAddItem(remito.tempId, product, quantity, price);
+    const q = Math.max(1, parseInt(quantityInput || "0") || 0);
+    // normalize price input: remove thousand separators and use dot as decimal
+    const normalized = (priceInput || "").replace(/\./g, "").replace(/,/g, ".");
+    const p = parseFloat(normalized) || 0;
+    if (product.trim() && q > 0 && p > 0) {
+      onAddItem(remito.tempId, product, q, p);
       setProduct("");
       setQuantity(1);
+      setQuantityInput(String(1));
       setPrice(0);
+      setPriceInput(formatPriceARG(0));
     }
   };
 
@@ -268,6 +296,60 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
                   <Edit2 size={14} className="opacity-60" />
                 </h3>
               </div>
+              <div className="flex items-center gap-3">
+                <div className="text-sm">
+                  {isEditingEmail ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="px-2 py-1 rounded text-sm text-ink-primary"
+                        value={editedEmail}
+                        onChange={(e) => setEditedEmail(e.target.value)}
+                      />
+                      <button
+                        onClick={() => {
+                          onUpdateClientContact(remito.tempId, editedEmail, remito.clientPhone || "");
+                          setIsEditingEmail(false);
+                        }}
+                        className="bg-white p-1 rounded text-green-600"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button onClick={() => { setEditedEmail(remito.clientEmail || ""); setIsEditingEmail(false); }} className="bg-white p-1 rounded text-red-600"><X size={14} /></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm opacity-90">{remito.clientEmail}</p>
+                      <button onClick={() => setIsEditingEmail(true)} className="text-white bg-transparent p-1"><Edit2 size={14} /></button>
+                    </div>
+                  )}
+                </div>
+                <div className="text-sm">
+                  {isEditingPhone ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="px-2 py-1 rounded text-sm text-ink-primary"
+                        value={editedPhone}
+                        onChange={(e) => setEditedPhone(e.target.value)}
+                      />
+                      <button
+                        onClick={() => {
+                          onUpdateClientContact(remito.tempId, remito.clientEmail || "", editedPhone);
+                          setIsEditingPhone(false);
+                        }}
+                        className="bg-white p-1 rounded text-green-600"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button onClick={() => { setEditedPhone(remito.clientPhone || ""); setIsEditingPhone(false); }} className="bg-white p-1 rounded text-red-600"><X size={14} /></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm opacity-90">{remito.clientPhone}</p>
+                      <button onClick={() => setIsEditingPhone(true)} className="text-white bg-transparent p-1"><Edit2 size={14} /></button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => onDelete(remito.tempId)}
                 className="bg-red-500 hover:bg-red-600 p-1 rounded text-white transition"
@@ -277,7 +359,7 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
             </>
           )}
         </div>
-        <p className="text-sm opacity-90">{remito.clientPhone}</p>
+        
       </div>
 
       {/* Contenido */}
@@ -293,21 +375,42 @@ function RemitCard({ remito, onAddItem, onRemoveItem, onDelete, onUpdateClientNa
             onKeyPress={(e) => e.key === "Enter" && handleAddItem()}
             className="w-full px-2 py-1 border border-rose-primary rounded text-sm mb-2"
           />
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder="Cant."
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-16 px-2 py-1 border border-rose-primary rounded text-sm"
-            />
-            <input
-              type="number"
-              placeholder="Precio"
-              value={price}
-              onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-              className="flex-1 px-2 py-1 border border-rose-primary rounded text-sm"
-            />
+          <div className="flex gap-2 items-center">
+            <div className="flex flex-col">
+              <label className="text-xs text-ink-secondary">Cantidad</label>
+              <input
+                type="number"
+                placeholder="Cantidad"
+                value={quantityInput}
+                onFocus={() => setQuantityInput("")}
+                onBlur={() => {
+                  const q = Math.max(1, parseInt(quantityInput || "") || 1);
+                  setQuantity(q);
+                  setQuantityInput(String(q));
+                }}
+                onChange={(e) => setQuantityInput(e.target.value)}
+                className="w-24 px-2 py-1 border border-rose-primary rounded text-sm"
+              />
+            </div>
+            <div className="flex-1 flex flex-col">
+              <label className="text-xs text-ink-secondary">Precio</label>
+              <input
+                type="text"
+                placeholder="$ 0,00"
+                value={priceInput}
+                onFocus={() => setPriceInput(price > 0 ? String(price) : "")}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // allow digits, dots and commas
+                  setPriceInput(v);
+                  const normalized = v.replace(/\./g, "").replace(/,/g, ".");
+                  const n = parseFloat(normalized) || 0;
+                  setPrice(n);
+                }}
+                onBlur={() => setPriceInput(formatPriceARG(price))}
+                className="flex-1 px-2 py-1 border border-rose-primary rounded text-sm"
+              />
+            </div>
             <button
               onClick={handleAddItem}
               className="bg-rose-primary hover:bg-rose-deep text-white px-3 py-1 rounded text-sm font-semibold transition flex items-center gap-1"
