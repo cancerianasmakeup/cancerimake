@@ -328,18 +328,22 @@ export async function generateRemitoPDF(remito: Remito) {
   yPosition += 18;
 
   // ========================
-  // TOTALES
+  // TOTALES (incluye seña/adelanto)
   // ========================
   const totalsBoxWidth = 60;
   const totalsX = pageWidth - margin - totalsBoxWidth;
 
   doc.setFillColor(230, 230, 230);
-  doc.rect(totalsX + 1, yPosition, totalsBoxWidth + 1, 24, "F");
+  doc.rect(totalsX + 1, yPosition, totalsBoxWidth + 1, 36, "F");
 
   doc.setFillColor(...colors.roseSoft);
   doc.setDrawColor(...colors.rosePrimary);
   doc.setLineWidth(2);
-  doc.rect(totalsX, yPosition, totalsBoxWidth, 24, "FD");
+  doc.rect(totalsX, yPosition, totalsBoxWidth, 36, "FD");
+
+  // calcular seña y total final
+  const deposit = typeof remito.deposit === "number" ? remito.deposit : 0;
+  const finalTotal = Math.max(subtotal - (deposit || 0), 0);
 
   let totalY = yPosition + 4;
 
@@ -354,6 +358,16 @@ export async function generateRemitoPDF(remito: Remito) {
 
   totalY += 10;
 
+  if (deposit && deposit > 0) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.roseDeep);
+    doc.text("Menos seña:", totalsX + 3, totalY);
+    doc.setFont("helvetica", "bold");
+    doc.text(`-${formatPriceARG(deposit)}`, totalsX + totalsBoxWidth - 3, totalY, { align: "right" });
+    totalY += 10;
+  }
+
   doc.setDrawColor(...colors.rosePrimary);
   doc.setLineWidth(1);
   doc.line(totalsX + 2, totalY - 2, totalsX + totalsBoxWidth - 2, totalY - 2);
@@ -366,7 +380,7 @@ export async function generateRemitoPDF(remito: Remito) {
   doc.text("TOTAL", totalsX + 3, totalY + 4);
 
   doc.setFontSize(16);
-  doc.text(formatPriceARG(subtotal), totalsX + totalsBoxWidth - 3, totalY + 4, { align: "right" });
+  doc.text(formatPriceARG(finalTotal), totalsX + totalsBoxWidth - 3, totalY + 4, { align: "right" });
 
   // ========================
   // NOTAS
