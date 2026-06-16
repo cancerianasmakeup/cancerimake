@@ -24,6 +24,12 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const formatInputPrice = (value: string) => {
+    const normalized = value.replace(/[^0-9,\.]/g, "").replace(/\./g, "").replace(/,/g, ".");
+    const numberValue = parseFloat(normalized);
+    return Number.isNaN(numberValue) ? 0 : numberValue;
+  };
+
   const addItem = () => {
     if (!newItemProduct || !newItemPrice) {
       alert("Por favor completa producto y precio");
@@ -34,7 +40,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
       id: Math.random().toString(36).substr(2, 9),
       product: newItemProduct,
       quantity: parseFloat(newItemQuantity) || 1,
-      price: parseFloat(newItemPrice) || 0,
+      price: formatInputPrice(newItemPrice),
     };
 
     setItems([...items, newItem]);
@@ -100,8 +106,8 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
 
   const total = calculateTotal();
   const subtotal = total;
-  const iva = subtotal * 0.21;
-  const grandTotal = subtotal + iva;
+  const iva = 0; // IVA ya está incluido en los precios
+  const grandTotal = subtotal;
 
   return (
     <div className="max-w-5xl">
@@ -197,13 +203,24 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                   step="0.1"
                 />
                 <input
-                  type="number"
+                  type="text"
                   value={newItemPrice}
-                  onChange={(e) => setNewItemPrice(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const formatted = raw.replace(/[^0-9,\.]/g, "");
+                    setNewItemPrice(formatted);
+                  }}
+                  onBlur={() => {
+                    const numeric = formatInputPrice(newItemPrice);
+                    setNewItemPrice(numeric ? formatPrice(numeric) : "");
+                  }}
+                  onFocus={() => {
+                    if (newItemPrice) {
+                      setNewItemPrice(String(formatInputPrice(newItemPrice)));
+                    }
+                  }}
                   className="input"
-                  placeholder="Precio"
-                  min="0"
-                  step="0.01"
+                  placeholder="$ 0,00"
                 />
                 <button
                   onClick={addItem}
@@ -274,18 +291,14 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                         </td>
                         <td className="py-3 px-4">
                           <input
-                            type="number"
-                            value={item.price}
-                            onChange={(e) =>
-                              updateItem(
-                                item.id,
-                                "price",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
+                            type="text"
+                            value={formatPrice(item.price)}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^0-9,\.]/g, "");
+                              updateItem(item.id, "price", formatInputPrice(raw));
+                            }}
                             className="input text-right"
-                            min="0"
-                            step="0.01"
+                            placeholder="$ 0,00"
                           />
                         </td>
                         <td className="py-3 px-4 text-right font-medium">
