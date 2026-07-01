@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical } from "lucide-react";
+import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical, Package } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import type { Category, Product } from "@cancerianas/shared";
+import type { Category, Product, WholesaleTier } from "@cancerianas/shared";
+import { formatPrice, wholesaleTierInfo, sanitizeWholesaleTiers } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
 
 type VariantDraft = {
@@ -36,7 +37,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
   // Drag & drop reorder de imágenes
   const [dragImgIdx, setDragImgIdx] = useState<number | null>(null);
   const [overImgIdx, setOverImgIdx] = useState<number | null>(null);
-  const [form, setForm] = useState<Partial<Product> & { videos?: string[] }>({
+  const [form, setForm] = useState<Partial<Product> & { videos?: string[]; wholesale_tiers?: WholesaleTier[] }>({
     name: "",
     slug: "",
     description: "",
@@ -48,6 +49,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
     sku: "",
     images: [],
     videos: [],
+    wholesale_tiers: [],
     status: "draft",
     is_featured: false,
   });
@@ -160,6 +162,30 @@ export default function ProductForm({ productId }: { productId?: string }) {
     setForm({ ...form, images: arr });
   }
 
+  // ===== PRECIOS POR MAYOR HELPERS =====
+  const wholesaleTiers = form.wholesale_tiers ?? [];
+
+  function updateTier(i: number, patch: Partial<WholesaleTier>) {
+    setForm((prev) => ({
+      ...prev,
+      wholesale_tiers: (prev.wholesale_tiers ?? []).map((t, idx) => (idx === i ? { ...t, ...patch } : t)),
+    }));
+  }
+
+  function addTier() {
+    setForm((prev) => ({
+      ...prev,
+      wholesale_tiers: [...(prev.wholesale_tiers ?? []), { label: "", units: 0, price: 0 }],
+    }));
+  }
+
+  function removeTier(i: number) {
+    setForm((prev) => ({
+      ...prev,
+      wholesale_tiers: (prev.wholesale_tiers ?? []).filter((_, idx) => idx !== i),
+    }));
+  }
+
   // ===== VARIANT HELPERS =====
   function updateVariant(i: number, patch: Partial<VariantDraft>) {
     setVariants((prev) => prev.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
@@ -266,6 +292,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
         cost: Number(form.cost ?? 0),
         stock: variantsActive ? variantsStockTotal : Number(form.stock ?? 0),
         videos: form.videos ?? [],
+        wholesale_tiers: sanitizeWholesaleTiers(form.wholesale_tiers ?? []),
       };
 
       let savedId = productId;
@@ -487,6 +514,123 @@ export default function ProductForm({ productId }: { productId?: string }) {
             />
           </div>
 
+          {/* Precios por mayor */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-rose-deep" />
+              <h3 className="font-display text-lg">Precios por mayor</h3>
+            </div>
+            <p className="text-xs text-ink-soft">
+              Ofrecé packs con más unidades a un precio con descuento (ej: <strong>3 unidades</strong>,{" "}
+              <strong>media caja</strong>, <strong>caja</strong>). La clienta los elige como botones en la
+              página del producto y ve el precio tachado con el % de descuento. Se descuenta del mismo stock.
+            </p>
+
+            {hasVariants && wholesaleTiers.length > 0 && (
+              <p className="text-xs text-ink-secondary bg-rose-whisper border border-rose-pastel rounded-xl px-3 py-2">
+                💡 Este producto tiene variantes. Al elegir un pack, la clienta reparte esas unidades entre las
+                variantes con stock (ej: 2 de un tono + 1 de otro). El precio del pack es fijo para esa cantidad.
+              </p>
+            )}
+
+            {wholesaleTiers.length > 0 && (
+              <div className="space-y-3">
+                {wholesaleTiers.map((t, i) => {
+                  const base = Number(form.price ?? 0);
+                  const info = wholesaleTierInfo(
+                    { label: t.label, units: Number(t.units) || 0, price: Number(t.price) || 0 },
+                    base
+                  );
+                  const validRow = (Number(t.units) || 0) > 0 && (Number(t.price) || 0) > 0;
+                  const noDiscount = validRow && info.savings <= 0;
+                  return (
+                    <div key={i} className="border border-rose-pastel rounded-2xl p-3 space-y-3 bg-rose-whisper/40">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex-1 min-w-[140px]">
+                          <label className="text-xs text-ink-soft block mb-1">Nombre del pack</label>
+                          <input
+                            className="input text-sm"
+                            placeholder="Ej: 3 unidades, Media caja…"
+                            value={t.label}
+                            onChange={(e) => updateTier(i, { label: e.target.value })}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="text-xs text-ink-soft block mb-1">Unidades</label>
+                          <input
+                            type="number"
+                            min="1"
+                            className="input text-sm text-center"
+                            placeholder="3"
+                            value={t.units || ""}
+                            onChange={(e) => updateTier(i, { units: Number(e.target.value) })}
+                          />
+                        </div>
+                        <div className="w-32">
+                          <label className="text-xs text-ink-soft block mb-1">Precio del pack</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft text-sm pointer-events-none">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              className="input text-sm text-right pl-7"
+                              placeholder="8500"
+                              value={t.price || ""}
+                              onChange={(e) => updateTier(i, { price: Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeTier(i)}
+                          className="flex-shrink-0 p-2 text-error hover:bg-error/10 rounded-full transition mb-0.5"
+                          title="Quitar pack"
+                          aria-label="Quitar pack"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Preview del descuento */}
+                      {validRow ? (
+                        noDiscount ? (
+                          <p className="text-xs text-warning">
+                            Este pack no tiene descuento respecto al precio unitario ({formatPrice(base)} c/u).
+                            Bajá el precio del pack para que convenga.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                            <span className="text-ink-soft">
+                              Precio normal:{" "}
+                              <span className="line-through">{formatPrice(info.regularTotal)}</span>
+                            </span>
+                            <span className="font-semibold text-rose-deep">
+                              {formatPrice(info.price)} el pack
+                            </span>
+                            <span className="text-ink-soft">≈ {formatPrice(info.unitPrice)} c/u</span>
+                            <span className="bg-rose-deep text-white font-bold rounded-full px-2 py-0.5">
+                              -{info.discountPct}%
+                            </span>
+                          </div>
+                        )
+                      ) : (
+                        <p className="text-xs text-ink-soft">Completá unidades y precio para ver el descuento.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={addTier}
+              className="flex items-center gap-2 text-sm text-rose-deep font-medium hover:underline"
+            >
+              <Plus className="w-4 h-4" /> Agregar opción de compra por mayor
+            </button>
+          </div>
+
           {/* Videos */}
           <div className="card space-y-4">
             <div className="flex items-center gap-2">
@@ -637,23 +781,29 @@ export default function ProductForm({ productId }: { productId?: string }) {
             <h3 className="font-display text-lg">Precio y stock</h3>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Precio (ARS) *</label>
-              <input
-                type="number"
-                className="input"
-                value={form.price ?? 0}
-                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                required
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none">$</span>
+                <input
+                  type="number"
+                  className="input pl-7"
+                  value={form.price ?? 0}
+                  onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                  required
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Precio comparativo (tachado)</label>
-              <input
-                type="number"
-                className="input"
-                value={form.compare_price ?? ""}
-                onChange={(e) => setForm({ ...form, compare_price: e.target.value ? Number(e.target.value) : null })}
-                placeholder="Opcional"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none">$</span>
+                <input
+                  type="number"
+                  className="input pl-7"
+                  value={form.compare_price ?? ""}
+                  onChange={(e) => setForm({ ...form, compare_price: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="Opcional"
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Stock</label>
@@ -674,13 +824,16 @@ export default function ProductForm({ productId }: { productId?: string }) {
             </div>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">Precio de costo (ARS)</label>
-              <input
-                type="number"
-                className="input"
-                value={form.cost ?? 0}
-                onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
-                placeholder="Solo visible para vos"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none">$</span>
+                <input
+                  type="number"
+                  className="input pl-7"
+                  value={form.cost ?? 0}
+                  onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
+                  placeholder="Solo visible para vos"
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm font-semibold text-ink-primary mb-1 block">SKU</label>

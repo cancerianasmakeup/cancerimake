@@ -8,7 +8,7 @@ import QueueGateServer from "@/components/QueueGateServer";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
 import ProductGallery from "@/components/ProductGallery";
 import RelatedProducts from "@/components/RelatedProducts";
-import { formatPrice } from "@cancerianas/shared";
+import { formatPrice, sanitizeWholesaleTiers } from "@cancerianas/shared";
 import type { Product, ProductVariant } from "@cancerianas/shared";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +169,9 @@ async function ProductContent({
                 <AddToCartButton
                   productId={p.id}
                   price={p.price}
+                  stock={p.stock}
                   variants={(variants as ProductVariant[] | null) ?? []}
+                  wholesaleTiers={sanitizeWholesaleTiers(p.wholesale_tiers)}
                 />
               )}
             </div>

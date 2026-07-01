@@ -53,6 +53,16 @@ export interface ProductCategoryLink {
   category?: Pick<Category, "id" | "name" | "slug">;
 }
 
+// Precio por mayor: un "pack" de compra con más unidades a un precio total
+// con descuento. Ej: { label: "Media caja", units: 12, price: 30000 }.
+// `price` es el precio TOTAL del pack; el % de descuento se deriva comparando
+// contra el precio unitario regular del producto.
+export interface WholesaleTier {
+  label: string; // nombre visible del pack (ej "3 unidades", "Media caja")
+  units: number; // cantidad de unidades que incluye (> 0)
+  price: number; // precio total del pack (ARS)
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -66,6 +76,7 @@ export interface Product {
   sku: string | null;
   images: string[];
   videos: string[]; // URLs a archivos de video del fabricante (.mp4/.webm) o embeds
+  wholesale_tiers: WholesaleTier[]; // packs de compra por mayor (default [])
   status: ProductStatus;
   is_featured: boolean;
   weight_grams: number | null;
@@ -384,4 +395,48 @@ export function formatPrice(amount: number): string {
     currency: "ARS",
     minimumFractionDigits: 0,
   }).format(amount);
+}
+
+// ============================================================
+// PRECIOS POR MAYOR — helpers
+// ============================================================
+
+// Normaliza y valida los tiers cargados (descarta filas incompletas).
+export function sanitizeWholesaleTiers(raw: unknown): WholesaleTier[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t: any) => ({
+      label: String(t?.label ?? "").trim(),
+      units: Math.floor(Number(t?.units) || 0),
+      price: Number(t?.price) || 0,
+    }))
+    .filter((t) => t.units > 0 && t.price > 0)
+    .sort((a, b) => a.units - b.units);
+}
+
+export interface WholesaleTierInfo {
+  label: string;
+  units: number;
+  price: number; // total del pack
+  unitPrice: number; // price / units
+  regularTotal: number; // basePrice * units (sin descuento)
+  savings: number; // regularTotal - price
+  discountPct: number; // % de descuento redondeado (0-100)
+}
+
+// Calcula la info derivada de un tier respecto al precio unitario regular.
+export function wholesaleTierInfo(tier: WholesaleTier, basePrice: number): WholesaleTierInfo {
+  const units = Math.max(1, tier.units);
+  const regularTotal = basePrice * units;
+  const savings = Math.max(0, regularTotal - tier.price);
+  const discountPct = regularTotal > 0 ? Math.round((savings / regularTotal) * 100) : 0;
+  return {
+    label: tier.label,
+    units,
+    price: tier.price,
+    unitPrice: tier.price / units,
+    regularTotal,
+    savings,
+    discountPct,
+  };
 }
