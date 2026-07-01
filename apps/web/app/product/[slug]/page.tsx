@@ -7,6 +7,7 @@ import StoreGate from "@/components/StoreGate";
 import QueueGateServer from "@/components/QueueGateServer";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
 import ProductGallery from "@/components/ProductGallery";
+import ProductDescription from "@/components/ProductDescription";
 import RelatedProducts from "@/components/RelatedProducts";
 import { formatPrice, sanitizeWholesaleTiers } from "@cancerianas/shared";
 import type { Product, ProductVariant } from "@cancerianas/shared";
@@ -104,7 +105,17 @@ async function ProductContent({
   const p = { ...(product as Product), category: primaryCategory } as Product & {
     category: { name: string; slug: string } | null;
   };
-  const hasDiscount = p.compare_price && p.compare_price > p.price;
+  const hasDiscount = !!(p.compare_price && p.compare_price > p.price);
+  const discountPct = hasDiscount ? Math.round((1 - p.price / p.compare_price!) * 100) : 0;
+
+  // Título con jerarquía: "Nombre — Detalle — Marca (código)" →
+  //   principal = "Nombre", subtítulo = "Detalle · Marca", código aparte.
+  const codeMatch = p.name.match(/\s*\(([^)]+)\)\s*$/);
+  const itemCode = codeMatch ? codeMatch[1] : null;
+  const nameNoCode = codeMatch ? p.name.slice(0, codeMatch.index).trimEnd() : p.name;
+  const nameParts = nameNoCode.split(/\s+—\s+/);
+  const mainName = nameParts[0];
+  const subName = nameParts.slice(1).join(" · ");
 
   return (
     <>
@@ -128,41 +139,56 @@ async function ProductContent({
 
         <div className="relative max-w-6xl mx-auto px-4 py-8 md:py-12">
           {p.category && (
-            <p className="text-sm text-ink-soft mb-4">
-              <a href={`/category/${p.category.slug}`} className="hover:text-rose-deep">{p.category.name}</a>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-rose-deep/80 font-semibold mb-6">
+              <a href={`/category/${p.category.slug}`} className="hover:text-rose-deep transition-colors">{p.category.name}</a>
             </p>
           )}
 
-          <div className="grid md:grid-cols-2 gap-10">
+          <div className="grid md:grid-cols-2 gap-10 lg:gap-14">
             {/* Galería: imágenes + videos del fabricante */}
             <ProductGallery images={p.images ?? []} videos={p.videos ?? []} alt={p.name} />
 
             {/* Info */}
-            <div>
-              <h1 className="font-display text-3xl md:text-5xl text-ink-primary leading-tight mb-4">
-                {p.name}
+            <div className="md:pt-2">
+              {/* Título con jerarquía editorial */}
+              <h1 className="font-accent font-medium text-4xl md:text-6xl text-ink-primary leading-[1.02] mb-2">
+                {mainName}
               </h1>
-
-              <div className="flex items-baseline gap-3 mb-6">
-                <span className="font-display font-bold text-4xl text-rose-deep">
-                  {formatPrice(p.price)}
-                </span>
-                {hasDiscount && (
-                  <span className="text-ink-soft text-xl line-through">
-                    {formatPrice(p.compare_price!)}
-                  </span>
-                )}
-              </div>
-
-              {p.description && (
-                <p className="text-center text-sm leading-relaxed mb-8 whitespace-pre-line font-medium tracking-wide text-ink-secondary" style={{ fontWeight: 500, letterSpacing: "0.01em" }}>
-                  {p.description}
+              {subName && (
+                <p className="text-ink-secondary text-base md:text-lg tracking-wide leading-snug mb-1.5">
+                  {subName}
+                </p>
+              )}
+              {itemCode && (
+                <p className="text-[10px] uppercase tracking-[0.25em] text-ink-soft/70 mb-6">
+                  Ítem {itemCode}
                 </p>
               )}
 
+              {/* Precio */}
+              <div className="flex items-end gap-3 mb-6">
+                <span className="font-accent font-semibold text-5xl md:text-[3.25rem] leading-none text-rose-deep">
+                  {formatPrice(p.price)}
+                </span>
+                {hasDiscount && (
+                  <div className="flex flex-col leading-tight pb-1">
+                    <span className="text-ink-soft/70 text-lg line-through">
+                      {formatPrice(p.compare_price!)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wide text-rose-deep">
+                      <span className="bg-rose-pastel rounded-full px-2 py-0.5">−{discountPct}% OFF</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Divisor delicado */}
+              <div className="h-px w-full bg-gradient-to-r from-rose-medium/50 via-rose-pastel to-transparent mb-6" />
+
+              {/* Comprar — el selector va justo debajo del precio */}
               {p.stock === 0 ? (
-                <div className="card bg-rose-pastel text-center py-6">
-                  <p className="font-semibold text-ink-primary">Sin stock por ahora 🌸</p>
+                <div className="rounded-3xl border border-rose-pastel bg-rose-whisper/60 text-center py-7 px-6">
+                  <p className="font-accent text-2xl text-ink-primary">Agotado por ahora 🌸</p>
                   <p className="text-ink-soft text-sm mt-1">Volvé a chequear pronto, repongo seguido.</p>
                 </div>
               ) : (
@@ -178,6 +204,15 @@ async function ProductContent({
           </div>
         </div>
       </section>
+
+      {/* Descripción del producto — debajo del comprador */}
+      {p.description && (
+        <section className="max-w-3xl mx-auto px-4 py-10 md:py-14">
+          <h2 className="font-accent text-3xl text-ink-primary mb-1">Sobre el producto</h2>
+          <span className="block w-12 h-px bg-rose-medium mb-6" />
+          <ProductDescription text={p.description} />
+        </section>
+      )}
 
       {/* Info de envío — fuera del fondo animado */}
       <div className="max-w-6xl mx-auto px-4 py-6">

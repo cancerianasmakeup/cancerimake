@@ -68,6 +68,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300..900;1,300..900&display=swap"
           rel="stylesheet"
         />
+        {/* Serif de acento — títulos delicados / deluxe */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
+          rel="stylesheet"
+        />
 
         {/* Google Analytics: el hardcoded sigue activo, además se inyecta el que config el admin */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-RYLFCEE138" />

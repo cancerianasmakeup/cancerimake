@@ -27,6 +27,7 @@ module.exports = {
       fontFamily: {
         display: ["Montserrat", "system-ui", "sans-serif"],
         sans: ["Montserrat", "system-ui", "sans-serif"],
+        accent: ["'Cormorant Garamond'", "Georgia", "serif"],
       },
       boxShadow: {
         soft: "0 4px 16px rgba(180, 130, 145, 0.08)",
