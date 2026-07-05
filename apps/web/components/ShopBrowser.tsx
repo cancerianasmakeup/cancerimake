@@ -6,9 +6,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronDown, Search, Sparkles, X } from "lucide-react";
-import ProductCard from "@/components/ProductCard";
+import ProductCardGlam from "@/components/ProductCardGlam";
+import MiniCrab3D from "@/components/MiniCrab3D";
 import type { Product, Category } from "@cancerianas/shared";
 
 type SortKey = "recent" | "price_asc" | "price_desc" | "name_asc";
@@ -36,6 +37,7 @@ export default function ShopBrowser({
   initialSort: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [q, setQ] = useState(initialQ);
   const [debouncedQ, setDebouncedQ] = useState(initialQ);
@@ -60,7 +62,7 @@ export default function ShopBrowser({
     if (sort && sort !== "recent") next.set("sort", sort);
     else next.delete("sort");
     const qs = next.toString();
-    router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, cat, sort]);
 
@@ -93,23 +95,52 @@ export default function ShopBrowser({
   }, [products, debouncedQ, cat, sort]);
 
   return (
-    <main>
+    <main className="relative overflow-hidden bg-[#0B0509]">
+      {/* Video de fondo fijo (el mismo del inicio) + velo oscuro */}
+      <div aria-hidden className="fixed inset-0 pointer-events-none">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="none"
+          className="w-full h-full object-cover opacity-60"
+          src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/fondocance1.mp4"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0509]/80 via-[#0B0509]/60 to-[#0B0509]/85" />
+      </div>
+
+      {/* Decoración de fondo (mismo glam oscuro que la home) */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-48 -left-48 w-[38rem] h-[38rem] bg-rose-deep/25 rounded-full blur-[140px]" />
+        <div className="absolute top-[28%] -right-56 w-[34rem] h-[34rem] bg-[#FF4081]/15 rounded-full blur-[150px]" />
+        <div className="absolute top-[60%] -left-40 w-[30rem] h-[30rem] bg-rose-primary/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-0 right-[15%] w-[26rem] h-[26rem] bg-rose-deep/15 rounded-full blur-[120px]" />
+        <Sparkles className="absolute top-[10%] left-[6%] w-4 h-4 text-rose-primary/70 sparkle-twinkle" />
+        <Sparkles className="absolute top-[34%] right-[8%] w-3 h-3 text-white/50 sparkle-twinkle" style={{ animationDelay: "0.8s" }} />
+        <Sparkles className="absolute top-[58%] left-[10%] w-3.5 h-3.5 text-rose-medium/60 sparkle-twinkle" style={{ animationDelay: "1.4s" }} />
+        <Sparkles className="absolute top-[80%] right-[14%] w-4 h-4 text-rose-primary/50 sparkle-twinkle" style={{ animationDelay: "2s" }} />
+      </div>
+
       {/* HERO destacados */}
       {featured.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 pt-8 md:pt-10 pb-2">
+        <section className="relative max-w-6xl mx-auto px-4 pt-8 md:pt-10 pb-2">
           <div className="flex items-end justify-between mb-5">
             <div>
-              <span className="inline-flex items-center gap-2 bg-rose-pastel text-rose-deep px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              <span className="inline-flex items-center gap-2 bg-white/10 border border-white/15 backdrop-blur text-rose-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" /> Destacados
               </span>
-              <h1 className="font-display text-3xl md:text-5xl text-ink-primary mt-3 leading-tight">
-                Lo más amado <span className="italic text-rose-deep">de la tienda</span>
+              <h1 className="font-display text-3xl md:text-5xl text-white font-black mt-3 leading-tight">
+                Lo más amado{" "}
+                <span className="italic bg-gradient-to-r from-rose-primary via-rose-medium to-rose-deep bg-clip-text text-transparent">
+                  de la tienda
+                </span>
               </h1>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
             {featured.slice(0, 8).map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCardGlam key={p.id} product={p} glow />
             ))}
           </div>
         </section>
@@ -118,22 +149,25 @@ export default function ShopBrowser({
       {/* Buscador + categorías + sort + grilla */}
       <section
         id="catalogo"
-        className="max-w-6xl mx-auto px-4 py-8 md:py-12"
+        className="relative max-w-6xl mx-auto px-4 py-8 md:py-12"
       >
         {/* Headline section */}
         <div className="mb-6">
           <div className="flex items-end justify-between flex-wrap gap-3">
             <div>
-              <span className="inline-flex items-center gap-1.5 bg-rose-pastel text-rose-deep px-3 py-1 rounded-full text-xs font-bold uppercase tracking-[0.15em] mb-3">
-                <Sparkles className="w-3.5 h-3.5" /> Catálogo
-              </span>
-              <h2 className="font-display text-3xl md:text-5xl text-ink-primary font-black leading-tight">
-                Todo en <span className="italic text-rose-deep">un solo lugar</span>
+              <h2 className="font-display text-3xl md:text-5xl text-white font-black leading-tight flex items-center gap-1 flex-wrap">
+                <span>
+                  Mirá toda la tienda{" "}
+                  <span className="italic bg-gradient-to-r from-rose-primary via-rose-medium to-rose-deep bg-clip-text text-transparent">
+                    de Cancerianas
+                  </span>
+                </span>
+                <MiniCrab3D />
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-ink-soft tabular-nums">
-                <strong className="text-ink-primary text-base">{filtered.length}</strong>{" "}
+              <span className="text-sm text-white/50 tabular-nums">
+                <strong className="text-white text-base">{filtered.length}</strong>{" "}
                 {filtered.length === 1 ? "producto" : "productos"}
               </span>
               {(debouncedQ || cat) && (
@@ -143,7 +177,7 @@ export default function ShopBrowser({
                     setQ("");
                     setCat("");
                   }}
-                  className="inline-flex items-center gap-1 bg-white border border-rose-pastel text-rose-deep font-semibold text-xs px-3 py-1.5 rounded-full hover:bg-rose-whisper transition-colors"
+                  className="inline-flex items-center gap-1 bg-white/10 border border-white/15 text-rose-primary font-semibold text-xs px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors"
                 >
                   <X className="w-3 h-3" /> Limpiar
                 </button>
@@ -153,23 +187,23 @@ export default function ShopBrowser({
         </div>
 
         {/* Toolbar sticky con glass effect */}
-        <div className="sticky top-[62px] sm:top-[72px] z-20 -mx-4 px-4 py-3 mb-5 bg-cream/85 backdrop-blur-md border-y border-rose-pastel/50">
+        <div className="sticky top-[62px] sm:top-[72px] z-20 -mx-4 px-4 py-3 mb-5 bg-[#0B0509]/85 backdrop-blur-md border-y border-white/10">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[220px] group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none group-focus-within:text-rose-deep transition-colors" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none group-focus-within:text-rose-primary transition-colors" />
               <input
                 type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscá un producto, marca o categoría…"
                 autoComplete="off"
-                className="w-full pl-11 pr-10 py-3 rounded-full bg-white border border-rose-pastel text-sm placeholder:text-ink-soft focus:outline-none focus:ring-4 focus:ring-rose-primary/20 focus:border-rose-primary transition-all shadow-sm"
+                className="w-full pl-11 pr-10 py-3 rounded-full bg-white/[0.07] border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-4 focus:ring-rose-primary/25 focus:border-rose-primary/60 focus:bg-white/10 transition-all"
               />
               {q && (
                 <button
                   type="button"
                   onClick={() => setQ("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-ink-soft hover:text-rose-deep hover:bg-rose-pastel transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-white/50 hover:text-rose-primary hover:bg-white/10 transition"
                   aria-label="Limpiar"
                 >
                   <X className="w-4 h-4" />
@@ -180,7 +214,8 @@ export default function ShopBrowser({
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortKey)}
-                className="appearance-none cursor-pointer pl-4 pr-9 py-3 rounded-full bg-white border border-rose-pastel text-sm font-semibold text-ink-primary focus:outline-none focus:ring-4 focus:ring-rose-primary/20 focus:border-rose-primary transition-all shadow-sm hover:bg-rose-whisper"
+                style={{ colorScheme: "dark" }}
+                className="appearance-none cursor-pointer pl-4 pr-9 py-3 rounded-full bg-white/[0.07] border border-white/15 text-sm font-semibold text-white focus:outline-none focus:ring-4 focus:ring-rose-primary/25 focus:border-rose-primary/60 transition-all hover:bg-white/10"
               >
                 {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
                   <option key={k} value={k}>
@@ -188,7 +223,7 @@ export default function ShopBrowser({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
             </div>
           </div>
 
@@ -214,9 +249,9 @@ export default function ShopBrowser({
 
         {/* Grid */}
         {filtered.length === 0 ? (
-          <div className="card text-center py-20">
+          <div className="rounded-3xl bg-white/[0.05] backdrop-blur border border-white/10 text-center py-20">
             <div className="text-6xl mb-3">🌸</div>
-            <p className="text-ink-secondary">
+            <p className="text-white/70">
               {debouncedQ
                 ? `No encontramos productos para "${debouncedQ}"`
                 : "Todavía no hay productos en esta categoría"}
@@ -228,7 +263,7 @@ export default function ShopBrowser({
                   setQ("");
                   setCat("");
                 }}
-                className="btn-secondary mt-4 text-sm"
+                className="btn-primary mt-5 !py-2.5 !text-sm"
               >
                 Ver todos los productos
               </button>
@@ -237,7 +272,7 @@ export default function ShopBrowser({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
             {filtered.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCardGlam key={p.id} product={p} glow />
             ))}
           </div>
         )}
@@ -245,9 +280,12 @@ export default function ShopBrowser({
 
       {/* Categorías como cards al final, para SEO + descubrimiento */}
       {categories.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 pb-16">
-          <h2 className="font-display text-2xl md:text-3xl text-ink-primary mb-6">
-            Explorá por categoría
+        <section className="relative max-w-6xl mx-auto px-4 pb-16">
+          <h2 className="font-display text-2xl md:text-3xl font-black text-white mb-6">
+            Explorá por{" "}
+            <span className="italic bg-gradient-to-r from-rose-primary to-rose-deep bg-clip-text text-transparent">
+              categoría
+            </span>
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
             {categories.map((c) => {
@@ -308,7 +346,7 @@ function CategoryChip({
       className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap text-sm font-semibold transition-all duration-200 flex-shrink-0 border ${
         active
           ? "bg-gradient-to-r from-rose-deep to-rose-primary text-white shadow-[0_4px_16px_-2px_rgba(230,107,133,0.5)] border-transparent scale-[1.03]"
-          : "bg-white text-ink-primary border-rose-pastel hover:bg-rose-whisper hover:border-rose-primary hover:scale-[1.02]"
+          : "bg-white/[0.07] text-white/85 border-white/15 hover:bg-white/15 hover:border-rose-primary/50 hover:scale-[1.02]"
       }`}
     >
       <span className="text-base leading-none">{icon}</span>
