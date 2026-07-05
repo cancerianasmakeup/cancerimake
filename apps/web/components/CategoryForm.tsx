@@ -278,6 +278,7 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
                     type="number"
                     className="input"
                     value={form.display_order ?? 0}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => update("display_order", Number(e.target.value))}
                   />
                 </div>

@@ -3,6 +3,9 @@ export interface RemitItem {
   product: string;
   quantity: number;
   price: number;
+  // Metadatos opcionales cuando el item viene del catálogo de la tienda
+  productId?: string; // id del producto en la DB (para descontar stock disponible en la sesión)
+  wholesale?: boolean; // true si el precio aplicado es el de por mayor
 }
 
 export interface Remito {

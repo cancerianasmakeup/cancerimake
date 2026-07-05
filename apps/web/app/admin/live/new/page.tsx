@@ -161,8 +161,8 @@ export default function NewLiveEvent() {
               <div className="grid md:grid-cols-2 gap-3">
                 <input className="input md:col-span-2" placeholder="Nombre" value={o.name} onChange={e => updateOffer(i, { name: e.target.value })} />
                 <input className="input md:col-span-2" placeholder="Descripción (opcional)" value={o.description} onChange={e => updateOffer(i, { description: e.target.value })} />
-                <input className="input" type="number" placeholder="Precio (ARS)" value={o.price || ""} onChange={e => updateOffer(i, { price: Number(e.target.value) })} />
-                <input className="input" type="number" placeholder={type === "sobres" ? "Total de sobres" : "Unidades disponibles"} value={o.total_stock || ""} onChange={e => updateOffer(i, { total_stock: Number(e.target.value) })} />
+                <input className="input" type="number" placeholder="Precio (ARS)" value={o.price || ""} onFocus={e => e.target.select()} onChange={e => updateOffer(i, { price: Number(e.target.value) })} />
+                <input className="input" type="number" placeholder={type === "sobres" ? "Total de sobres" : "Unidades disponibles"} value={o.total_stock || ""} onFocus={e => e.target.select()} onChange={e => updateOffer(i, { total_stock: Number(e.target.value) })} />
                 <input className="input md:col-span-2" placeholder="Imagen URL (opcional)" value={o.image_url} onChange={e => updateOffer(i, { image_url: e.target.value })} />
               </div>
             </div>

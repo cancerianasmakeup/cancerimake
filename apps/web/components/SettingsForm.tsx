@@ -750,6 +750,7 @@ function Field({
         className="input !h-10 !text-sm w-full"
         type={type}
         value={value ?? ""}
+        onFocus={type === "number" ? (e) => e.target.select() : undefined}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
       />
@@ -777,6 +778,7 @@ function NumberField({
         value={Number.isFinite(value) ? value : 0}
         min={min}
         step={step}
+        onFocus={(e) => e.target.select()}
         onChange={(e) => {
           const v = Number(e.target.value);
           if (Number.isFinite(v)) onChange(v);

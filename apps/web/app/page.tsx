@@ -3,10 +3,11 @@ import { ArrowRight, Sparkles, Heart, Truck, ShoppingBag } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ProductCard from "@/components/ProductCard";
+import HomeProductsMarquee from "@/components/HomeProductsMarquee";
 import AdminPreviewBanner from "@/components/AdminPreviewBanner";
 import DropCountdownStrip from "@/components/DropCountdownStrip";
-import BannerCarousel from "@/components/BannerCarousel";
+import HeroDragSlider from "@/components/HeroDragSlider";
+import CrabCompanion3D from "@/components/CrabCompanion3D";
 import { getServerStoreState, isCurrentUserAdmin } from "@/lib/store-status";
 import type { Product, Category, LiveEvent } from "@cancerianas/shared";
 
@@ -56,6 +57,28 @@ async function HomeOpen() {
       <Header />
       <DropCountdownStrip />
 
+      {/* Cangrejito 3D: arranca abajo de BIENVENIDA y acompaña el scroll
+          (izquierda → derecha) hasta desvanecerse antes de las categorías */}
+      <CrabCompanion3D />
+
+      {/* Shell oscuro de la home: fondo negro glam con glows rosas,
+          sparkles y corazones flotando (solo el menú queda blanco) */}
+      <div className="relative overflow-hidden bg-[#0B0509]">
+        {/* Decoración de fondo */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-48 -left-48 w-[38rem] h-[38rem] bg-rose-deep/25 rounded-full blur-[140px]" />
+          <div className="absolute top-[30%] -right-56 w-[34rem] h-[34rem] bg-[#FF4081]/15 rounded-full blur-[150px]" />
+          <div className="absolute top-[62%] -left-40 w-[30rem] h-[30rem] bg-rose-primary/10 rounded-full blur-[130px]" />
+          <div className="absolute bottom-0 right-[15%] w-[26rem] h-[26rem] bg-rose-deep/15 rounded-full blur-[120px]" />
+          <Sparkles className="absolute top-[16%] left-[7%] w-4 h-4 text-rose-primary/70 sparkle-twinkle" />
+          <Sparkles className="absolute top-[38%] right-[9%] w-3 h-3 text-white/50 sparkle-twinkle" style={{ animationDelay: "0.8s" }} />
+          <Sparkles className="absolute top-[55%] left-[11%] w-3.5 h-3.5 text-rose-medium/60 sparkle-twinkle" style={{ animationDelay: "1.4s" }} />
+          <Sparkles className="absolute top-[76%] right-[16%] w-4 h-4 text-rose-primary/50 sparkle-twinkle" style={{ animationDelay: "2s" }} />
+          <Sparkles className="absolute top-[88%] left-[20%] w-3 h-3 text-white/40 sparkle-twinkle" style={{ animationDelay: "2.6s" }} />
+          <Heart className="absolute top-[24%] right-[5%] w-5 h-5 text-rose-deep/40 fill-current animate-float" />
+          <Heart className="absolute top-[68%] left-[4%] w-4 h-4 text-rose-primary/30 fill-current animate-float" style={{ animationDelay: "1.2s" }} />
+        </div>
+
       {/* HERO — full viewport con carrusel flotante */}
       <section className="relative overflow-hidden min-h-[80dvh] flex items-start">
         {/* Video fondo */}
@@ -65,11 +88,11 @@ async function HomeOpen() {
           muted
           playsInline
           preload="none"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/hero-bg.mp4"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-60"
+          src="https://pub-4ee8d6afe02b441fa29b28b501f5a6be.r2.dev/fondocance1.mp4"
         />
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/50 to-white/10" />
+        {/* Overlay oscuro: deja entrever el video y funde con el fondo negro */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0B0509]/90 via-[#0B0509]/55 to-[#0B0509]" />
 
         <div className="relative w-full max-w-6xl mx-auto px-4 pt-8 pb-16 md:pt-10 md:pb-24 space-y-8">
 
@@ -112,17 +135,23 @@ async function HomeOpen() {
             </p>
           </div>
 
-          {/* Carrusel — un poco más chico, centrado */}
-          <div className="w-full max-w-3xl mx-auto rounded-[2rem] overflow-hidden shadow-[0_32px_80px_-12px_rgba(0,0,0,0.28)] ring-1 ring-white/40">
-            <BannerCarousel />
+          {/* Slot donde "vive" el cangrejito 3D al entrar (el canvas es fixed,
+              este div solo reserva el lugar y sirve de ancla de posición) */}
+          <div id="crab-3d-anchor" aria-hidden className="h-48 md:h-72 -mt-2 -mb-2 flex items-center justify-center">
+            {/* Aura rosa detrás del cangrejo para que brille sobre el negro */}
+            <div className="w-64 md:w-96 h-24 md:h-36 bg-rose-deep/30 blur-3xl rounded-full" />
           </div>
+
+          {/* Slider arrastrable de fotos (para volver al viejo: <BannerCarousel />
+              o al 3D: <Carousel3D /> — ambos siguen en components/) */}
+          <HeroDragSlider />
 
           {/* Texto hero — siempre centrado horizontalmente */}
           <div className="relative max-w-2xl mx-auto space-y-6 text-center">
             {/* Glow suave detrás del título */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-rose-pastel/50 blur-3xl rounded-full pointer-events-none" aria-hidden />
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-rose-deep/30 blur-3xl rounded-full pointer-events-none" aria-hidden />
 
-            <h1 className="relative font-display text-[clamp(2rem,9vw,5rem)] md:text-7xl leading-[1.05] text-ink-primary drop-shadow-sm font-black md:whitespace-nowrap">
+            <h1 className="relative font-display text-[clamp(2rem,9vw,5rem)] md:text-7xl leading-[1.05] text-white drop-shadow-sm font-black md:whitespace-nowrap">
               TU LUGAR,
               <span className="block italic text-rose-deep relative">
                 NUESTRO LUGAR.
@@ -145,7 +174,7 @@ async function HomeOpen() {
               </span>
             </h1>
 
-            <p className="text-base md:text-lg text-ink-secondary leading-relaxed max-w-md mx-auto">
+            <p className="text-base md:text-lg text-white/75 leading-relaxed max-w-md mx-auto">
               Un lugar para todas, para que todo sea más fácil y más cómodo. Acá van a estar desde las dinámicas hasta los envíos. Acá va a estar todo.
             </p>
 
@@ -165,14 +194,14 @@ async function HomeOpen() {
 
             {/* Trust chips */}
             <div className="flex flex-wrap gap-2 justify-center pt-1">
-              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
-                <Truck className="w-3.5 h-3.5 text-rose-deep" /> Envíos a todo el país
+              <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3.5 py-1.5 text-xs md:text-sm text-white/85 font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Truck className="w-3.5 h-3.5 text-rose-primary" /> Envíos a todo el país
               </span>
-              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
-                <Heart className="w-3.5 h-3.5 text-rose-deep" /> Hecho con amor
+              <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3.5 py-1.5 text-xs md:text-sm text-white/85 font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Heart className="w-3.5 h-3.5 text-rose-primary" /> Hecho con amor
               </span>
-              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-rose-pastel rounded-full px-3.5 py-1.5 text-xs md:text-sm text-ink-secondary font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
-                <Sparkles className="w-3.5 h-3.5 text-rose-deep" /> Drops exclusivos
+              <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3.5 py-1.5 text-xs md:text-sm text-white/85 font-medium shadow-[0_2px_8px_rgba(255,143,163,0.15)]">
+                <Sparkles className="w-3.5 h-3.5 text-rose-primary" /> Drops exclusivos
               </span>
             </div>
           </div>
@@ -180,7 +209,108 @@ async function HomeOpen() {
         </div>
       </section>
 
-      {/* TIKTOK BANNER — logo sticker grande + card pegada a la derecha */}
+      {/* CATEGORÍAS — grilla editorial 3×2, justo debajo del hero */}
+      <section className="max-w-6xl mx-auto px-4 -mt-6 md:-mt-10 mb-20 relative">
+        <h2 className="font-display text-3xl md:text-5xl font-black text-white text-center mb-3 leading-[0.98]">
+          Elegí la categoría que{" "}
+          <span className="italic bg-gradient-to-r from-rose-primary via-rose-medium to-rose-deep bg-clip-text text-transparent">
+            necesitás
+          </span>
+        </h2>
+        <p className="text-white/50 text-sm md:text-base text-center mb-10">
+          Todo lo que amás, ordenado para encontrarlo en segundos.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          {(categories as Category[] | null)?.map((cat) => {
+            const from = cat.gradient_from || "#FFE5EC";
+            const to = cat.gradient_to || "#FFB3C6";
+            return (
+              <Link
+                key={cat.id}
+                href={`/category/${cat.slug}`}
+                aria-label={cat.name}
+                className="category-glow group relative block rounded-[1.75rem] aspect-square md:aspect-[16/11] transition-transform duration-300 hover:-translate-y-1.5"
+              >
+                {/* Contenido recortado (el glow vive en el Link, sin overflow) */}
+                <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
+                  {/* Imagen / gradiente con zoom al hover */}
+                  <div
+                    className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-110"
+                    style={
+                      cat.image_url
+                        ? {
+                            backgroundImage: `url(${cat.image_url})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : {
+                            background: `radial-gradient(circle at 25% 20%, ${from}, ${to} 75%)`,
+                          }
+                    }
+                  />
+                  {/* Velo para legibilidad, se intensifica al hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent group-hover:from-black/85 transition-colors duration-300" />
+
+                  {/* Icono en chip de vidrio */}
+                  <div className="absolute top-3.5 left-3.5 md:top-4 md:left-4 w-10 h-10 md:w-11 md:h-11 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/30 transition-all">
+                    <span className="text-lg md:text-xl leading-none">{cat.icon || "🌸"}</span>
+                  </div>
+
+                  {/* Barra inferior: nombre + flecha */}
+                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-lg md:text-2xl font-black text-white leading-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+                        {cat.name}
+                      </h3>
+                      <p className="text-white/70 text-[11px] md:text-xs font-medium mt-1.5 line-clamp-1">
+                        {cat.description || "Explorar la colección"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white -rotate-45 group-hover:rotate-0 group-hover:bg-rose-deep group-hover:border-rose-deep transition-all duration-300">
+                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* DESTACADOS — marquesina en movimiento */}
+      <section className="mb-20 relative">
+        {/* Header centrado */}
+        <div className="max-w-6xl mx-auto px-4 mb-10 text-center">
+          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[0.95]">
+            Todos nuestros{" "}
+            <span className="italic bg-gradient-to-r from-rose-primary via-rose-medium to-rose-deep bg-clip-text text-transparent">
+              productos
+            </span>
+          </h2>
+        </div>
+
+        {(featured as Product[] | null)?.length ? (
+          <>
+            <HomeProductsMarquee products={featured as Product[]} />
+            {/* CTA debajo de las 3 filas */}
+            <div className="text-center mt-10 px-4">
+              <Link href="/shop" className="btn-primary !px-10 !py-4 !text-base group">
+                Ver toda la tienda
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="card text-center py-16 mx-4">
+            <div className="text-6xl mb-4">🌸</div>
+            <p className="text-ink-secondary">Todavía no hay productos destacados.</p>
+            <p className="text-ink-soft text-sm mt-2">Agregá productos desde el panel admin y marcalos como destacados.</p>
+          </div>
+        )}
+      </section>
+
+      {/* TIKTOK BANNER — backstage neón */}
       <section className="max-w-6xl mx-auto px-4 mt-8 mb-4">
         <a
           href="https://www.tiktok.com/@cancerianas.makeup2"
@@ -189,15 +319,15 @@ async function HomeOpen() {
           aria-label="Seguinos en TikTok @cancerianas.makeup2"
           className="group flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 hover:scale-[1.01] transition-transform active:scale-100"
         >
-          {/* Logo sticker — grande, recortado, ligeramente rotado, con sombra fuerte */}
-          <div
-            className="relative z-10 shrink-0 -mb-6 md:mb-0 md:-mr-8 md:-rotate-6 group-hover:md:-rotate-3 transition-transform duration-300"
-            style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,0.35))" }}
-          >
+          {/* Logo sticker — con halo neón doble */}
+          <div className="relative z-10 shrink-0 -mb-6 md:mb-0 md:-mr-10 md:-rotate-6 group-hover:md:-rotate-2 group-hover:md:scale-105 transition-transform duration-300">
+            <div className="absolute inset-2 rounded-full bg-[#25F4EE]/25 blur-2xl group-hover:bg-[#25F4EE]/40 transition-colors" aria-hidden />
+            <div className="absolute inset-4 translate-x-3 translate-y-3 rounded-full bg-[#FE2C55]/25 blur-2xl group-hover:bg-[#FE2C55]/40 transition-colors" aria-hidden />
             <svg
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
-              className="w-28 h-28 md:w-44 md:h-44"
+              className="relative w-28 h-28 md:w-44 md:h-44"
+              style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,0.45))" }}
             >
               {/* Capa cyan (atrás, offset arriba-derecha) */}
               <g transform="translate(0.7, -0.7)">
@@ -223,28 +353,53 @@ async function HomeOpen() {
             </svg>
           </div>
 
-          {/* Card a la derecha — pegada al logo */}
-          <div className="relative w-full md:w-auto rounded-3xl bg-[#010101] text-white shadow-2xl overflow-hidden">
-            {/* Glows decorativos */}
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#25F4EE] opacity-25 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#FE2C55] opacity-25 rounded-full blur-3xl pointer-events-none" />
+          {/* Card con borde degradé cyan→rosa */}
+          <div className="relative w-full md:w-auto rounded-[2rem] p-[1.5px] bg-gradient-to-r from-[#25F4EE]/70 via-white/10 to-[#FE2C55]/70 shadow-[0_24px_70px_-20px_rgba(37,244,238,0.35),0_24px_70px_-20px_rgba(254,44,85,0.35)]">
+            <div className="relative rounded-[calc(2rem-1.5px)] bg-[#050505] text-white overflow-hidden">
+              {/* Glows internos pulsantes */}
+              <div className="absolute -top-14 -left-14 w-56 h-56 bg-[#25F4EE] opacity-20 rounded-full blur-3xl pointer-events-none animate-soft-pulse" />
+              <div className="absolute -bottom-14 -right-14 w-56 h-56 bg-[#FE2C55] opacity-20 rounded-full blur-3xl pointer-events-none animate-soft-pulse" style={{ animationDelay: "1s" }} />
 
-            <div className="relative px-6 py-5 md:pl-16 md:pr-8 md:py-7 flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#25F4EE]">
-                  Tu pase al backstage
-                </p>
-                <p className="font-display text-2xl md:text-3xl font-black tracking-tight mt-1 leading-none">
-                  @cancerianas.makeup2
-                </p>
-                <p className="text-white/60 text-sm font-medium mt-1.5">
-                  Drops, dinámicas y LIVES en TikTok
-                </p>
+              {/* Shine que barre la card al hover */}
+              <div
+                className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 group-hover:translate-x-[500%] transition-transform duration-1000 ease-out pointer-events-none"
+                aria-hidden
+              />
+
+              {/* Notas musicales flotando */}
+              <span className="absolute top-3 right-24 text-[#25F4EE]/50 text-lg animate-float pointer-events-none" aria-hidden>♪</span>
+              <span className="absolute bottom-3 right-44 text-[#FE2C55]/50 text-sm animate-float pointer-events-none" style={{ animationDelay: "1.4s" }} aria-hidden>♫</span>
+
+              <div className="relative px-6 py-6 md:pl-16 md:pr-9 md:py-8 flex flex-col md:flex-row items-center gap-5 md:gap-10 text-center md:text-left">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.25em] font-bold text-[#25F4EE]">
+                    Tu pase al backstage
+                  </p>
+                  <p className="font-display text-2xl md:text-4xl font-black tracking-tight mt-1.5 leading-none">
+                    @cancerianas.<span className="bg-gradient-to-r from-[#25F4EE] to-[#FE2C55] bg-clip-text text-transparent">makeup2</span>
+                  </p>
+                  <p className="text-white/60 text-sm font-medium mt-2">
+                    Drops, dinámicas y LIVES en TikTok
+                  </p>
+                  {/* Chips de comunidad */}
+                  <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-3.5">
+                    <span className="inline-flex items-center gap-1.5 bg-white/[0.07] border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-white/85">
+                      🔥 +10K seguidoras
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 bg-white/[0.07] border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-white/85">
+                      <span className="relative flex w-1.5 h-1.5">
+                        <span className="absolute inset-0 rounded-full bg-[#FE2C55] animate-ping opacity-75" />
+                        <span className="relative w-1.5 h-1.5 rounded-full bg-[#FE2C55]" />
+                      </span>
+                      LIVES semanales
+                    </span>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-2 bg-white text-[#010101] rounded-full px-7 py-3.5 font-black text-sm tracking-wide shrink-0 shadow-[0_10px_30px_-8px_rgba(255,255,255,0.35)] group-hover:gap-3 group-hover:shadow-[0_12px_38px_-6px_rgba(37,244,238,0.45)] transition-all">
+                  Seguir
+                  <span className="inline-block group-hover:translate-x-1 transition-transform">→</span>
+                </span>
               </div>
-              <span className="inline-flex items-center gap-2 bg-white text-[#010101] rounded-full px-6 py-3 font-black text-sm tracking-wide shadow-lg shrink-0 group-hover:gap-3 transition-all">
-                Seguir
-                <span className="inline-block group-hover:translate-x-1 transition-transform">→</span>
-              </span>
             </div>
           </div>
         </a>
@@ -360,78 +515,8 @@ async function HomeOpen() {
         </div>
       </section>
 
-      {/* CATEGORÍAS */}
-      <section className="max-w-6xl mx-auto px-4 mt-12 mb-16">
-        <h2 className="font-sans text-xl md:text-2xl font-black tracking-tight mb-8 text-center uppercase leading-tight">
-          <span className="text-ink-primary">Elegí la categoría del producto que </span><span className="text-rose-deep">necesitás</span>
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          {(categories as Category[] | null)?.map((cat) => {
-            const from = cat.gradient_from || "#FFE5EC";
-            const to = cat.gradient_to || "#FFB3C6";
-            return (
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                aria-label={cat.name}
-                className="category-glow relative aspect-square rounded-3xl shadow-soft hover:shadow-lift transition-all hover:-translate-y-1 group"
-                style={
-                  cat.image_url
-                    ? {
-                        backgroundImage: `url(${cat.image_url})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }
-                    : {
-                        background: `radial-gradient(circle at 25% 20%, ${from}, ${to} 75%)`,
-                      }
-                }
-              >
-                {!cat.image_url && (
-                  <div className="absolute top-3 left-3 md:top-4 md:left-4 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md ring-1 ring-black/5 group-hover:scale-110 transition-transform">
-                    <span className="text-xl md:text-2xl leading-none">{cat.icon || "🌸"}</span>
-                  </div>
-                )}
-                <h3 className="absolute bottom-3 left-3 md:bottom-4 md:left-4 font-sans text-sm md:text-base font-bold text-white tracking-tight leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                  {cat.name}
-                </h3>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* DESTACADOS */}
-      <section className="mb-16">
-        <div className="max-w-6xl mx-auto px-4 mb-6">
-          <h2 className="font-sans text-2xl font-black tracking-tight uppercase text-center">
-            <span className="text-ink-primary">Todos nuestros </span><span className="text-rose-deep">productos</span>
-          </h2>
-        </div>
-        {(featured as Product[] | null)?.length ? (
-          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 pb-4 scrollbar-hide"
-            style={{ scrollPaddingLeft: "1rem" }}>
-            {(featured as Product[]).map((p) => (
-              <div key={p.id} className="snap-start shrink-0 w-[70vw] max-w-[260px]">
-                <ProductCard product={p} />
-              </div>
-            ))}
-            {/* Ver todo al final del carrusel */}
-            <div className="snap-start shrink-0 w-[45vw] max-w-[180px] flex items-center justify-center">
-              <Link href="/shop" className="btn-primary flex-col gap-2 h-full min-h-[220px] rounded-3xl w-full justify-center text-center">
-                <ArrowRight className="w-6 h-6" />
-                Ver todo
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="card text-center py-16 mx-4">
-            <div className="text-6xl mb-4">🌸</div>
-            <p className="text-ink-secondary">Todavía no hay productos destacados.</p>
-            <p className="text-ink-soft text-sm mt-2">Agregá productos desde el panel admin y marcalos como destacados.</p>
-          </div>
-        )}
-      </section>
+      </div>
+      {/* /shell oscuro */}
 
       <Footer />
     </>

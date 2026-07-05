@@ -157,7 +157,9 @@ export default function Header() {
 
       <header
         className={`sticky top-0 z-40 backdrop-blur-md transition-all duration-300 ${
-          scrolled
+          pathname === "/"
+            ? "bg-white/95 border-b border-rose-pastel shadow-[0_4px_20px_-8px_rgba(255,143,163,0.25)]"
+            : scrolled
             ? "bg-cream/95 border-b border-rose-pastel shadow-[0_4px_20px_-8px_rgba(255,143,163,0.25)]"
             : "bg-cream/60 border-b border-transparent"
         }`}

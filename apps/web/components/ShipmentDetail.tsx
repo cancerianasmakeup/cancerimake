@@ -831,6 +831,7 @@ function CustomQuotePanel({
             type="number"
             inputMode="numeric"
             value={amount}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
             className="input pl-8 text-2xl font-bold text-rose-deep"

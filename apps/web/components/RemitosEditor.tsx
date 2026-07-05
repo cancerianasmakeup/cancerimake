@@ -40,7 +40,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
     const newItem: RemitItem = {
       id: Math.random().toString(36).substr(2, 9),
       product: newItemProduct,
-      quantity: parseFloat(newItemQuantity) || 1,
+      quantity: Math.max(1, Math.floor(parseInt(newItemQuantity, 10) || 1)),
       price: formatInputPrice(newItemPrice),
     };
 
@@ -199,11 +199,13 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                 <input
                   type="number"
                   value={newItemQuantity}
-                  onChange={(e) => setNewItemQuantity(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setNewItemQuantity(e.target.value.replace(/[.,].*$/, ""))}
                   className="input"
                   placeholder="Cantidad"
-                  min="0.1"
-                  step="0.1"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
                 />
                 <input
                   type="text"
@@ -280,16 +282,18 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                           <input
                             type="number"
                             value={item.quantity}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) =>
                               updateItem(
                                 item.id,
                                 "quantity",
-                                parseFloat(e.target.value) || 0
+                                Math.max(0, Math.floor(parseInt(e.target.value, 10) || 0))
                               )
                             }
                             className="input text-center"
-                            min="0.1"
-                            step="0.1"
+                            min="1"
+                            step="1"
+                            inputMode="numeric"
                           />
                         </td>
                         <td className="py-3 px-4">

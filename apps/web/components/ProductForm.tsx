@@ -562,6 +562,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                             min="1"
                             className="input text-sm text-center"
                             placeholder="3"
+                            onFocus={(e) => e.target.select()}
                             value={t.units || ""}
                             onChange={(e) => updateTier(i, { units: Number(e.target.value) })}
                           />
@@ -575,6 +576,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                               min="0"
                               className="input text-sm text-right pl-7"
                               placeholder="8500"
+                              onFocus={(e) => e.target.select()}
                               value={t.price || ""}
                               onChange={(e) => updateTier(i, { price: Number(e.target.value) })}
                             />
@@ -787,6 +789,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                   type="number"
                   className="input pl-7"
                   value={form.price ?? 0}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
                   required
                 />
@@ -800,6 +803,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                   type="number"
                   className="input pl-7"
                   value={form.compare_price ?? ""}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setForm({ ...form, compare_price: e.target.value ? Number(e.target.value) : null })}
                   placeholder="Opcional"
                 />
@@ -811,6 +815,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                 type="number"
                 className={`input ${variantsActive ? "bg-rose-pastel/40 cursor-not-allowed" : ""}`}
                 value={displayedStock}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
                 readOnly={variantsActive}
                 disabled={variantsActive}
@@ -830,6 +835,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                   type="number"
                   className="input pl-7"
                   value={form.cost ?? 0}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
                   placeholder="Solo visible para vos"
                 />
@@ -909,6 +915,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                         v.stock === 0 ? "border-error/50 text-error" : "text-ink-primary"
                       }`}
                       value={v.stock}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => updateVariant(i, { stock: Number(e.target.value) })}
                     />
                   </div>
@@ -932,6 +939,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
                       className="input text-sm"
                       placeholder="0"
                       value={v.price_diff}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => updateVariant(i, { price_diff: Number(e.target.value) })}
                     />
                   </div>

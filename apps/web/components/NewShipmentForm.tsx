@@ -480,6 +480,7 @@ function NumField({
         type="number"
         value={value}
         min={0}
+        onFocus={(e) => e.target.select()}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
         className="input"
         required={required}

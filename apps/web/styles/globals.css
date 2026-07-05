@@ -320,6 +320,29 @@
   box-shadow: 0 0 6px rgba(230, 107, 133, 0.45);
 }
 
+/* Marquesina de productos de la home: filas que corren solas.
+   El track duplica su contenido y se desplaza -50% → loop perfecto.
+   data-dir="right" invierte el sentido. Hover sobre la fila = pausa. */
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee-x var(--marquee-duration, 50s) linear infinite;
+  will-change: transform;
+}
+.marquee-track[data-dir="right"] {
+  animation-direction: reverse;
+}
+.marquee-row:hover .marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
 /* Petalitos decorativos */
 .petal-bg::before {
   content: "";

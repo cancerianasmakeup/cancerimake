@@ -425,16 +425,26 @@ export interface WholesaleTierInfo {
 }
 
 // Calcula la info derivada de un tier respecto al precio unitario regular.
+//
+// Soporta los DOS formatos de carga que conviven en la DB:
+//  - `price` como TOTAL del pack (ej: 12 unidades por $30.000)
+//  - `price` como precio POR UNIDAD al llegar a esa cantidad
+//    (ej: "6 UNIDADES" → $1.200 c/u en un producto de $2.000)
+// Heurística: si el precio cargado es ≤ al precio unitario regular, no puede
+// ser el total de un pack de N unidades → se interpreta como precio unitario.
 export function wholesaleTierInfo(tier: WholesaleTier, basePrice: number): WholesaleTierInfo {
   const units = Math.max(1, tier.units);
+  const isPerUnit = basePrice > 0 && units > 1 && tier.price <= basePrice;
+  const unitPrice = isPerUnit ? tier.price : tier.price / units;
+  const packTotal = unitPrice * units;
   const regularTotal = basePrice * units;
-  const savings = Math.max(0, regularTotal - tier.price);
+  const savings = Math.max(0, regularTotal - packTotal);
   const discountPct = regularTotal > 0 ? Math.round((savings / regularTotal) * 100) : 0;
   return {
     label: tier.label,
     units,
-    price: tier.price,
-    unitPrice: tier.price / units,
+    price: packTotal,
+    unitPrice,
     regularTotal,
     savings,
     discountPct,
