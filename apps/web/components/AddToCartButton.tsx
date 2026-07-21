@@ -12,10 +12,13 @@
 //   3. Con packs → tarjetas de opción ("1 unidad / suelto" + cada pack).
 //        - Opción suelta: igual que 1 o 2 (precio normal, con price_diff por variante).
 //        - Opción pack sin variantes: agrega exactamente N unidades al precio del pack.
-//        - Opción pack CON variantes: se abre un desplegable para repartir las N unidades
-//          entre las variantes con stock (ej: 2 de un tono + 1 de otro). El precio del pack
-//          es fijo → unit_price = precio_pack / N para cada variante elegida (se ignora el
-//          price_diff porque el pack es una oferta plana).
+//        - Opción pack CON variantes:
+//            · Si el pack es una CAJA o MEDIA CAJA (label contiene "caja"): el cliente
+//              NO elige tonos. Las N unidades se reparten automáticamente en partes
+//              iguales entre los tonos con stock (ej: caja de 24 con 6 tonos → 4 c/u).
+//            · Cualquier otro pack (ej "3 unidades"): reparto manual entre tonos.
+//          El precio del pack es fijo → unit_price = precio_pack / N para cada variante
+//          (se ignora el price_diff porque el pack es una oferta plana).
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -101,6 +104,35 @@ export default function AddToCartButton({
   const selected = options.find((o) => o.key === selectedKey) ?? options[0];
   const isPack = !selected.isRegular;
 
+  // Los packs "caja" / "media caja" van surtidos automáticamente; otros packs
+  // (ej "3 unidades") mantienen el reparto manual de tonos.
+  const isCajaTier = (label: string) => /caja/i.test(label);
+  const isAutoPack = isPack && isCajaTier(selected.label);
+
+  // Reparto automático del pack entre variantes: partes iguales (round-robin)
+  // respetando el stock de cada tono. El cliente no elige tonos en las cajas
+  // para que el surtido salga siempre parejo.
+  const packAlloc = useMemo(() => {
+    if (!isAutoPack || !hasVariants) return null;
+    const avail = variants.filter((v) => (v.stock ?? 0) > 0);
+    const alloc: Record<string, number> = {};
+    for (const v of avail) alloc[v.id] = 0;
+    let remaining = selected.units;
+    while (remaining > 0) {
+      let progressed = false;
+      for (const v of avail) {
+        if (remaining === 0) break;
+        if (alloc[v.id] < (v.stock ?? 0)) {
+          alloc[v.id]++;
+          remaining--;
+          progressed = true;
+        }
+      }
+      if (!progressed) break; // no queda stock para completar el pack
+    }
+    return { alloc, allocated: selected.units - remaining };
+  }, [isAutoPack, hasVariants, variants, selected.units]);
+
   function selectOption(key: string) {
     setSelectedKey(key);
     // Reset de cantidades al cambiar de modo, para no arrastrar reparto viejo.
@@ -108,15 +140,19 @@ export default function AddToCartButton({
     setQtyNoVariant(1);
   }
 
-  // Total de unidades repartidas entre variantes (modo variantes).
+  // Total de unidades repartidas entre variantes (suelto o pack manual).
   const variantQtyTotal = variants.reduce((s, v) => s + (qtyByVariant[v.id] ?? 0), 0);
-  const packTarget = isPack ? selected.units : 0;
+  const packTarget = isPack && !isAutoPack ? selected.units : 0;
   const packRemaining = Math.max(0, packTarget - variantQtyTotal);
 
   // Unidades / precio final según el modo activo.
   const summary = useMemo(() => {
     if (isPack) {
-      const units = hasVariants ? variantQtyTotal : selected.units;
+      const units = hasVariants
+        ? isAutoPack
+          ? packAlloc?.allocated ?? 0
+          : variantQtyTotal
+        : selected.units;
       const finalPrice = selected.unitPrice * units;
       const regularPrice = price * units;
       return { units, finalPrice, regularPrice, savings: Math.max(0, regularPrice - finalPrice) };
@@ -134,11 +170,13 @@ export default function AddToCartButton({
       return { units, finalPrice: total, regularPrice: total, savings: 0 };
     }
     return { units: qtyNoVariant, finalPrice: price * qtyNoVariant, regularPrice: price * qtyNoVariant, savings: 0 };
-  }, [isPack, hasVariants, variants, qtyByVariant, qtyNoVariant, selected, price, variantQtyTotal]);
+  }, [isPack, isAutoPack, hasVariants, variants, qtyByVariant, qtyNoVariant, selected, price, packAlloc, variantQtyTotal]);
 
   const canSubmit = isPack
     ? hasVariants
-      ? variantQtyTotal === selected.units
+      ? isAutoPack
+        ? packAlloc?.allocated === selected.units
+        : variantQtyTotal === selected.units
       : selected.units <= totalStock
     : hasVariants
     ? variantQtyTotal > 0
@@ -152,10 +190,10 @@ export default function AddToCartButton({
     });
   }
 
-  // Cap por variante: en modo suelto = su stock; en modo pack = no pasar N total.
+  // Cap por variante: en suelto = su stock; en pack manual = no pasar N total.
   function maxForVariant(v: ProductVariant): number {
     const st = Math.max(0, v.stock ?? 0);
-    if (!isPack) return st;
+    if (!isPack || isAutoPack) return st;
     const curr = qtyByVariant[v.id] ?? 0;
     return Math.min(st, curr + packRemaining);
   }
@@ -186,7 +224,7 @@ export default function AddToCartButton({
         const eff = selected.price / selected.units; // precio efectivo por unidad del pack
         if (hasVariants) {
           for (const v of variants) {
-            const q = qtyByVariant[v.id] ?? 0;
+            const q = isAutoPack ? packAlloc?.alloc[v.id] ?? 0 : qtyByVariant[v.id] ?? 0;
             if (q > 0) lines.push({ variantId: v.id, qty: q, unitPrice: eff });
           }
         } else {
@@ -228,7 +266,7 @@ export default function AddToCartButton({
     }
   }
 
-  // ===== Render helper: lista de variantes con stepper =====
+  // ===== Render helper: lista de variantes con stepper (solo modo suelto) =====
   const renderVariantSteppers = (getMax: (v: ProductVariant) => number, showDiff: boolean) => (
     <ul className="rounded-2xl border border-rose-pastel divide-y divide-rose-pastel/70 bg-white overflow-hidden">
       {variants.map((v) => {
@@ -340,7 +378,9 @@ export default function AddToCartButton({
                   <p className="text-[11px] text-ink-soft mt-0.5">
                     {o.isRegular && hasVariants
                       ? "Elegí la cantidad"
-                      : `${o.units} ${o.units === 1 ? "unidad" : "unidades"}`}
+                      : `${o.units} ${o.units === 1 ? "unidad" : "unidades"}${
+                          hasVariants && isCajaTier(o.label) ? " · tonos surtidos" : ""
+                        }`}
                   </p>
                   <div className="mt-1.5 leading-tight">
                     <p className="font-display font-bold text-lg text-rose-deep">
@@ -356,8 +396,53 @@ export default function AddToCartButton({
         </div>
       )}
 
-      {/* ===== MODO PACK CON VARIANTES: repartir N unidades ===== */}
-      {isPack && hasVariants && (
+      {/* ===== PACK CAJA/MEDIA CAJA CON VARIANTES: surtido automático ===== */}
+      {isAutoPack && hasVariants && packAlloc && (
+        <div>
+          <div className="flex items-center justify-between mb-2.5">
+            <label className="text-sm font-semibold text-ink-primary">Surtido incluido</label>
+            <span className="text-xs font-bold rounded-full px-2 py-0.5 bg-rose-pastel text-rose-deep">
+              {packAlloc.allocated} {packAlloc.allocated === 1 ? "unidad" : "unidades"}
+            </span>
+          </div>
+          <p className="text-xs text-ink-soft mb-2">
+            Los packs vienen surtidos: las {selected.units} unidades se reparten en partes
+            iguales entre los tonos/sabores disponibles.
+          </p>
+          <ul className="rounded-2xl border border-rose-pastel divide-y divide-rose-pastel/70 bg-white overflow-hidden">
+            {variants
+              .filter((v) => (packAlloc.alloc[v.id] ?? 0) > 0)
+              .map((v) => {
+                const colorHex = v.attributes?.color_hex as string | undefined;
+                const q = packAlloc.alloc[v.id] ?? 0;
+                return (
+                  <li key={v.id} className="flex items-center gap-3 px-3 py-2.5">
+                    {colorHex ? (
+                      <span
+                        className="w-7 h-7 rounded-full ring-1 ring-black/10 shrink-0"
+                        style={{ backgroundColor: colorHex }}
+                        title={v.name}
+                      />
+                    ) : (
+                      <span className="w-7 h-7 rounded-full bg-rose-pastel text-rose-deep text-xs font-bold flex items-center justify-center shrink-0">
+                        {v.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <p className="flex-1 min-w-0 text-sm font-semibold text-ink-primary leading-tight truncate">
+                      {v.name}
+                    </p>
+                    <span className="text-sm font-bold text-rose-deep tabular-nums shrink-0">
+                      ×{q}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+      )}
+
+      {/* ===== PACK MANUAL (no caja) CON VARIANTES: repartir N unidades ===== */}
+      {isPack && !isAutoPack && hasVariants && (
         <div>
           <div className="flex items-center justify-between mb-2.5">
             <label className="text-sm font-semibold text-ink-primary">
@@ -463,7 +548,9 @@ export default function AddToCartButton({
           ? "Agregando..."
           : isAuthed === false
           ? "Iniciá sesión para comprar"
-          : isPack && hasVariants && variantQtyTotal !== selected.units
+          : isAutoPack && hasVariants && !canSubmit
+          ? "Sin stock suficiente para el pack"
+          : isPack && !isAutoPack && hasVariants && variantQtyTotal !== selected.units
           ? `Elegí ${packRemaining} más`
           : !canSubmit && hasVariants
           ? "Elegí al menos 1 unidad"
