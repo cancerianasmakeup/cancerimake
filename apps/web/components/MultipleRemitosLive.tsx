@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Remito, RemitItem } from "@/types/remito";
 import {
   Trash2,
@@ -50,18 +50,6 @@ export default function MultipleRemitosLive() {
       localStorage.setItem("liveRemitos", JSON.stringify(remitos));
     }
   }, [remitos, isLoaded]);
-
-  // Unidades ya cargadas de cada producto en TODOS los remitos de la sesión
-  // (para que entre todos los remitos no se venda más que el stock real).
-  const reserved = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of remitos) {
-      for (const it of r.items) {
-        if (it.productId) m.set(it.productId, (m.get(it.productId) ?? 0) + it.quantity);
-      }
-    }
-    return m;
-  }, [remitos]);
 
   const addNewRemito = () => {
     const n = nextClientNumber(remitos);
@@ -202,7 +190,7 @@ export default function MultipleRemitosLive() {
                 Remitos en vivo
               </h1>
               <p className="text-ink-secondary text-sm mt-1">
-                Un remito por clienta · stock y precios reales de la tienda
+                Un remito por clienta · precios reales de la tienda · el stock no limita
               </p>
             </div>
 
@@ -250,8 +238,7 @@ export default function MultipleRemitosLive() {
               <RemitCard
                 key={remito.tempId}
                 remito={remito}
-                catalog={catalog}
-                reserved={reserved}
+                catalog={catalog}
                 onAddItem={addItemToRemito}
                 onRemoveItem={removeItemFromRemito}
                 onDelete={deleteRemito}
@@ -288,8 +275,7 @@ export default function MultipleRemitosLive() {
 
 interface RemitCardProps {
   remito: LiveRemito;
-  catalog: CatalogProduct[];
-  reserved: Map<string, number>;
+  catalog: CatalogProduct[];
   onAddItem: (tempId: string, item: Omit<RemitItem, "id">) => void;
   onRemoveItem: (tempId: string, itemId: string) => void;
   onDelete: (tempId: string) => void;
@@ -300,8 +286,7 @@ interface RemitCardProps {
 
 function RemitCard({
   remito,
-  catalog,
-  reserved,
+  catalog,
   onAddItem,
   onRemoveItem,
   onDelete,
@@ -443,8 +428,7 @@ function RemitCard({
       <div className="p-4 sm:p-5">
         {/* Picker de productos de la tienda */}
         <ProductPicker
-          catalog={catalog}
-          reserved={reserved}
+          catalog={catalog}
           remitoItems={remito.items}
           onAdd={(item) => onAddItem(remito.tempId, item)}
         />

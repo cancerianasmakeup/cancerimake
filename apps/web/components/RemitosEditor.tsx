@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { ArrowLeft, Trash2, Download, Loader, Loader2, Tag } from "lucide-react";
 import { formatPrice } from "@cancerianas/shared";
 import { generateRemitoPDF } from "@/lib/remito-pdf";
@@ -24,16 +24,6 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const { catalog, catalogState } = useCatalog();
-
-  // Unidades ya cargadas de cada producto en este presupuesto: el picker las
-  // descuenta del stock disponible para no vender más de lo que hay.
-  const reserved = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const it of items) {
-      if (it.productId) m.set(it.productId, (m.get(it.productId) ?? 0) + it.quantity);
-    }
-    return m;
-  }, [items]);
 
   const formatInputPrice = (value: string) => {
     const normalized = value.replace(/[^0-9,\.]/g, "").replace(/\./g, "").replace(/,/g, ".");
@@ -236,12 +226,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
 
             {/* Escaneo / búsqueda / item manual */}
             <div className="mb-6">
-              <ProductPicker
-                catalog={catalog}
-                reserved={reserved}
-                remitoItems={items}
-                onAdd={addItem}
-              />
+              <ProductPicker catalog={catalog} remitoItems={items} onAdd={addItem} />
             </div>
 
             {/* Items Table */}

@@ -15,7 +15,11 @@ import {
 
 // ============================================================
 // Picker de productos: busca en el catálogo real, acepta escaneo con
-// pistola lectora, respeta stock y aplica precio mayorista automáticamente.
+// pistola lectora y aplica precio mayorista automáticamente.
+//
+// El stock es INDEPENDIENTE del presupuesto: se muestra como referencia pero
+// no limita nada y no se descuenta. El stock de products solo baja con una
+// compra real por el checkout.
 //
 // Flujo con lector: el campo de búsqueda está enfocado → disparás →
 // el lector "tipea" el código y manda Enter → el producto queda elegido y
@@ -25,13 +29,11 @@ import {
 
 export default function ProductPicker({
   catalog,
-  reserved,
   remitoItems,
   onAdd,
   autoFocus = false,
 }: {
   catalog: CatalogProduct[];
-  reserved: Map<string, number>;
   remitoItems: RemitItem[];
   onAdd: (item: Omit<RemitItem, "id">) => void;
   autoFocus?: boolean;
@@ -49,13 +51,10 @@ export default function ProductPicker({
   const searchRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
 
-  // Stock que queda según la tienda menos lo ya cargado en la sesión.
-  // OJO: es solo INFORMATIVO. El presupuesto no descuenta stock real y nunca
-  // bloquea la carga — el stock de la tienda se maneja aparte.
-  const availableFor = useCallback(
-    (p: CatalogProduct) => p.stock - (reserved.get(p.id) ?? 0),
-    [reserved]
-  );
+  // Stock REAL de la tienda, tal cual está en la tabla de productos. Es solo
+  // informativo: el presupuesto es independiente del stock, no lo descuenta ni
+  // se deja limitar por él. Ese número solo se mueve con una compra real.
+  const stockOf = (p: CatalogProduct) => p.stock;
 
   const results = useMemo(() => {
     const q = normalize(query.trim());
@@ -101,7 +100,7 @@ export default function ProductPicker({
     if (!found) return false;
     // Sin stock se carga igual: solo lo avisamos.
     setScanFeedback(
-      availableFor(found) <= 0
+      stockOf(found) <= 0
         ? { kind: "empty", text: `${found.name} — sin stock en la tienda, poné la cantidad igual` }
         : { kind: "ok", text: `${found.name} — poné la cantidad` }
     );
@@ -109,7 +108,7 @@ export default function ProductPicker({
     return true;
   };
 
-  const stockLeft = selected ? availableFor(selected) : 0;
+  const stockLeft = selected ? stockOf(selected) : 0;
   // Unidades del mismo producto que YA están en este remito: el precio
   // mayorista se calcula por el total acumulado (lo que lleva + lo nuevo).
   const already = selected
@@ -235,7 +234,7 @@ export default function ProductPicker({
               </p>
             ) : (
               results.map((p, i) => {
-                const avail = availableFor(p);
+                const avail = stockOf(p);
                 const out = avail <= 0;
                 return (
                   <button
@@ -279,7 +278,7 @@ export default function ProductPicker({
                       </p>
                     </div>
                     <span
-                      title="Stock de la tienda — informativo, se puede cargar igual"
+                      title="Stock de la tienda — informativo, el presupuesto se carga igual"
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                         out
                           ? "bg-ink-soft/15 text-ink-soft"
@@ -288,7 +287,7 @@ export default function ProductPicker({
                           : "bg-success/25 text-ink-secondary"
                       }`}
                     >
-                      {out ? "Sin stock" : `${avail} disp.`}
+                      {out ? "Sin stock" : `${avail} en tienda`}
                     </span>
                   </button>
                 );
@@ -372,7 +371,7 @@ export default function ProductPicker({
                 )}
                 {/* Stock de la tienda: referencia, no limita el presupuesto. */}
                 {stockLeft > 0 ? (
-                  <span className="ml-1">· quedan {stockLeft} en tienda</span>
+                  <span className="ml-1">· {stockLeft} en tienda</span>
                 ) : (
                   <span className="ml-1 text-ink-secondary font-semibold">· sin stock en tienda</span>
                 )}
