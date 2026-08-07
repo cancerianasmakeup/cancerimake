@@ -49,8 +49,11 @@ export default function ProductPicker({
   const searchRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
 
+  // Stock que queda según la tienda menos lo ya cargado en la sesión.
+  // OJO: es solo INFORMATIVO. El presupuesto no descuenta stock real y nunca
+  // bloquea la carga — el stock de la tienda se maneja aparte.
   const availableFor = useCallback(
-    (p: CatalogProduct) => Math.max(0, p.stock - (reserved.get(p.id) ?? 0)),
+    (p: CatalogProduct) => p.stock - (reserved.get(p.id) ?? 0),
     [reserved]
   );
 
@@ -69,7 +72,6 @@ export default function ProductPicker({
   }, [catalog, query]);
 
   const selectProduct = (p: CatalogProduct) => {
-    if (availableFor(p) <= 0) return;
     setSelected(p);
     setQuery(p.name);
     setOpen(false);
@@ -97,18 +99,17 @@ export default function ProductPicker({
   const tryScan = (raw: string): boolean => {
     const found = findByScan(catalog, raw);
     if (!found) return false;
-    if (availableFor(found) <= 0) {
-      setScanFeedback({ kind: "empty", text: `${found.name} — sin stock disponible` });
-      setQuery("");
-      setTimeout(() => searchRef.current?.focus(), 0);
-      return true;
-    }
-    setScanFeedback({ kind: "ok", text: `${found.name} — poné la cantidad` });
+    // Sin stock se carga igual: solo lo avisamos.
+    setScanFeedback(
+      availableFor(found) <= 0
+        ? { kind: "empty", text: `${found.name} — sin stock en la tienda, poné la cantidad igual` }
+        : { kind: "ok", text: `${found.name} — poné la cantidad` }
+    );
     selectProduct(found);
     return true;
   };
 
-  const maxQty = selected ? availableFor(selected) : 0;
+  const stockLeft = selected ? availableFor(selected) : 0;
   // Unidades del mismo producto que YA están en este remito: el precio
   // mayorista se calcula por el total acumulado (lo que lleva + lo nuevo).
   const already = selected
@@ -118,13 +119,15 @@ export default function ProductPicker({
     : 0;
   const pricing = selected ? unitPriceFor(selected, qty + already) : null;
 
+  // Sin techo por stock: el presupuesto puede llevar más unidades de las que
+  // hay cargadas en la tienda.
   const setQtyClamped = (n: number) => {
     const v = Math.floor(Number.isFinite(n) ? n : 1);
-    setQty(Math.min(Math.max(1, v), Math.max(1, maxQty)));
+    setQty(Math.max(1, v));
   };
 
   const handleAddFromCatalog = () => {
-    if (!selected || !pricing || qty < 1 || qty > maxQty) return;
+    if (!selected || !pricing || qty < 1) return;
     onAdd({
       product: selected.name,
       quantity: qty,
@@ -238,18 +241,13 @@ export default function ProductPicker({
                   <button
                     key={p.id}
                     type="button"
-                    disabled={out}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       selectProduct(p);
                     }}
                     onMouseEnter={() => setHighlight(i)}
                     className={`w-full flex items-center gap-3 px-3 py-2 text-left transition ${
-                      out
-                        ? "opacity-45 cursor-not-allowed"
-                        : i === highlight
-                        ? "bg-rose-whisper"
-                        : "bg-white hover:bg-rose-whisper"
+                      i === highlight ? "bg-rose-whisper" : "bg-white hover:bg-rose-whisper"
                     }`}
                   >
                     {p.image ? (
@@ -281,9 +279,10 @@ export default function ProductPicker({
                       </p>
                     </div>
                     <span
+                      title="Stock de la tienda — informativo, se puede cargar igual"
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                         out
-                          ? "bg-error/15 text-error"
+                          ? "bg-ink-soft/15 text-ink-soft"
                           : avail <= 5
                           ? "bg-warning/25 text-ink-secondary"
                           : "bg-success/25 text-ink-secondary"
@@ -333,7 +332,6 @@ export default function ProductPicker({
                 ref={qtyRef}
                 type="number"
                 min={1}
-                max={maxQty}
                 step={1}
                 inputMode="numeric"
                 value={qty}
@@ -350,8 +348,7 @@ export default function ProductPicker({
               <button
                 type="button"
                 onClick={() => setQtyClamped(qty + 1)}
-                className="px-2.5 py-2 text-rose-deep hover:bg-rose-pastel transition disabled:opacity-40"
-                disabled={qty >= maxQty}
+                className="px-2.5 py-2 text-rose-deep hover:bg-rose-pastel transition"
               >
                 <Plus size={14} />
               </button>
@@ -366,12 +363,18 @@ export default function ProductPicker({
                 {already > 0 ? (
                   <>
                     Ya lleva {already} u. → total{" "}
-                    <strong>{formatPriceARG(pricing.unit * (qty + already))}</strong> · quedan {maxQty}
+                    <strong>{formatPriceARG(pricing.unit * (qty + already))}</strong>
                   </>
                 ) : (
                   <>
-                    Total: <strong>{formatPriceARG(pricing.unit * qty)}</strong> · quedan {maxQty}
+                    Total: <strong>{formatPriceARG(pricing.unit * qty)}</strong>
                   </>
+                )}
+                {/* Stock de la tienda: referencia, no limita el presupuesto. */}
+                {stockLeft > 0 ? (
+                  <span className="ml-1">· quedan {stockLeft} en tienda</span>
+                ) : (
+                  <span className="ml-1 text-ink-secondary font-semibold">· sin stock en tienda</span>
                 )}
               </p>
             </div>
@@ -380,7 +383,7 @@ export default function ProductPicker({
               type="button"
               onClick={handleAddFromCatalog}
               className="btn-primary !py-2 !px-4 !text-sm"
-              disabled={qty < 1 || qty > maxQty}
+              disabled={qty < 1}
             >
               <Plus size={14} /> Agregar
             </button>
@@ -413,8 +416,7 @@ export default function ProductPicker({
                   key={i}
                   type="button"
                   onClick={() => setQtyClamped(Math.max(1, t.units - already))}
-                  disabled={t.units - already > maxQty}
-                  className="text-[10px] font-bold bg-rose-pastel hover:bg-rose-medium/50 text-ink-secondary px-2 py-1 rounded-full transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="text-[10px] font-bold bg-rose-pastel hover:bg-rose-medium/50 text-ink-secondary px-2 py-1 rounded-full transition"
                   title="Aplicar cantidad mayorista"
                 >
                   <Tag size={9} className="inline mr-0.5" />
