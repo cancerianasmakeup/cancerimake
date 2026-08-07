@@ -299,14 +299,31 @@ export default function ProductForm({ productId }: { productId?: string }) {
         wholesale_tiers: sanitizeWholesaleTiers(form.wholesale_tiers ?? []),
       };
 
+      // Si todavía no se corrió la migración del código de barras, guardamos
+      // igual el resto del producto en vez de romper el alta/edición entera.
+      const missingBarcodeColumn = (err: any) =>
+        err?.code === "PGRST204" || /barcode/i.test(String(err?.message ?? ""));
+      const withoutBarcode = () => {
+        const { barcode, ...rest } = payload;
+        return rest;
+      };
+
       let savedId = productId;
       if (productId) {
-        const { error } = await supabase.from("products").update(payload).eq("id", productId);
+        let { error } = await supabase.from("products").update(payload).eq("id", productId);
+        if (error && error.code !== "23505" && missingBarcodeColumn(error)) {
+          toast.warning("Falta correr la migración del código de barras — guardé el resto");
+          ({ error } = await supabase.from("products").update(withoutBarcode()).eq("id", productId));
+        }
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("products").insert(payload).select().single();
+        let { data, error } = await supabase.from("products").insert(payload).select().single();
+        if (error && error.code !== "23505" && missingBarcodeColumn(error)) {
+          toast.warning("Falta correr la migración del código de barras — guardé el resto");
+          ({ data, error } = await supabase.from("products").insert(withoutBarcode()).select().single());
+        }
         if (error) throw error;
-        savedId = data.id;
+        savedId = data!.id;
       }
 
       if (savedId) {

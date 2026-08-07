@@ -95,21 +95,22 @@ export function useCatalog() {
 
     const load = async () => {
       const BASE = "id, name, price, stock, images, sku, wholesale_tiers";
-      let { data, error } = await supabase
-        .from("products")
-        .select(`${BASE}, barcode`)
-        .eq("status", "active")
-        .order("name");
+      const run = (cols: string) =>
+        supabase.from("products").select(cols).eq("status", "active").order("name");
+
+      let { data, error } = (await run(`${BASE}, barcode`)) as {
+        data: any[] | null;
+        error: { message: string } | null;
+      };
 
       // Si todavía no se corrió la migración del código de barras, el catálogo
       // sigue funcionando (búsqueda por nombre/SKU) en vez de romperse entero.
       if (error && /barcode/i.test(error.message)) {
         console.warn("Falta la columna products.barcode — corré la migración 20260806000000_product_barcode.sql");
-        ({ data, error } = await supabase
-          .from("products")
-          .select(BASE)
-          .eq("status", "active")
-          .order("name"));
+        ({ data, error } = (await run(BASE)) as {
+          data: any[] | null;
+          error: { message: string } | null;
+        });
       }
 
       if (cancelled) return;
