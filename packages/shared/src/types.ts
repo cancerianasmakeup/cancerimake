@@ -74,6 +74,7 @@ export interface Product {
   cost: number; // costo interno (para margen, no se muestra al cliente). Default 0.
   stock: number;
   sku: string | null;
+  barcode: string | null; // código de barras del packaging (EAN/UPC/Code128 o interno)
   images: string[];
   videos: string[]; // URLs a archivos de video del fabricante (.mp4/.webm) o embeds
   wholesale_tiers: WholesaleTier[]; // packs de compra por mayor (default [])

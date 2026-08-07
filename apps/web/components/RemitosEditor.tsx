@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Download, Send, Loader } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { ArrowLeft, Trash2, Download, Loader, Loader2, Tag } from "lucide-react";
 import { formatPrice } from "@cancerianas/shared";
 import { generateRemitoPDF } from "@/lib/remito-pdf";
+import ProductPicker from "@/components/ProductPicker";
+import { unitPriceFor, useCatalog } from "@/lib/remito-catalog";
 import type { Remito, RemitItem } from "@/types/remito";
 
 interface RemitosEditorProps {
@@ -18,12 +20,20 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
   const [clientPhone, setClientPhone] = useState(remito.clientPhone);
   const [notes, setNotes] = useState(remito.notes);
   const [items, setItems] = useState<RemitItem[]>(remito.items);
-  const [newItemProduct, setNewItemProduct] = useState("");
-  const [newItemQuantity, setNewItemQuantity] = useState("1");
-  const [newItemPrice, setNewItemPrice] = useState("");
   const [deposit, setDeposit] = useState(remito.deposit || 0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const { catalog, catalogState } = useCatalog();
+
+  // Unidades ya cargadas de cada producto en este presupuesto: el picker las
+  // descuenta del stock disponible para no vender más de lo que hay.
+  const reserved = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of items) {
+      if (it.productId) m.set(it.productId, (m.get(it.productId) ?? 0) + it.quantity);
+    }
+    return m;
+  }, [items]);
 
   const formatInputPrice = (value: string) => {
     const normalized = value.replace(/[^0-9,\.]/g, "").replace(/\./g, "").replace(/,/g, ".");
@@ -31,23 +41,32 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
     return Number.isNaN(numberValue) ? 0 : numberValue;
   };
 
-  const addItem = () => {
-    if (!newItemProduct || !newItemPrice) {
-      alert("Por favor completa producto y precio");
-      return;
-    }
-
-    const newItem: RemitItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      product: newItemProduct,
-      quantity: Math.max(1, Math.floor(parseInt(newItemQuantity, 10) || 1)),
-      price: formatInputPrice(newItemPrice),
-    };
-
-    setItems([...items, newItem]);
-    setNewItemProduct("");
-    setNewItemQuantity("1");
-    setNewItemPrice("");
+  // Alta desde el picker (escaneo, búsqueda o item manual). Si el producto ya
+  // está en el presupuesto lo fusionamos en una sola línea y recalculamos el
+  // precio unitario según la CANTIDAD TOTAL, para que el mayorista se aplique
+  // aunque las unidades se hayan escaneado de a una.
+  const addItem = (item: Omit<RemitItem, "id">) => {
+    setItems((prev) => {
+      if (item.productId) {
+        const existing = prev.find((i) => i.productId === item.productId);
+        if (existing) {
+          const totalQty = existing.quantity + item.quantity;
+          const prod = catalog.find((p) => p.id === item.productId);
+          const pricing = prod ? unitPriceFor(prod, totalQty) : null;
+          return prev.map((i) =>
+            i.id === existing.id
+              ? {
+                  ...i,
+                  quantity: totalQty,
+                  price: pricing ? pricing.unit : i.price,
+                  wholesale: pricing ? pricing.wholesale : i.wholesale,
+                }
+              : i
+          );
+        }
+      }
+      return [...prev, { id: Math.random().toString(36).slice(2, 11), ...item }];
+    });
   };
 
   const removeItem = (id: string) => {
@@ -56,9 +75,21 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
 
   const updateItem = (id: string, field: keyof RemitItem, value: any) => {
     setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
+      items.map((item) => {
+        if (item.id !== id) return item;
+        const next = { ...item, [field]: value };
+        // Si es un producto del catálogo y cambió la cantidad, el precio
+        // unitario se recalcula solo (entra o sale del pack mayorista).
+        if (field === "quantity" && next.productId) {
+          const prod = catalog.find((p) => p.id === next.productId);
+          if (prod) {
+            const pricing = unitPriceFor(prod, next.quantity);
+            next.price = pricing.unit;
+            next.wholesale = pricing.wholesale;
+          }
+        }
+        return next;
+      })
     );
   };
 
@@ -184,57 +215,33 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
 
           {/* Items Section */}
           <div className="card">
-            <h2 className="font-display text-xl mb-4 text-ink-primary">Items</h2>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+              <h2 className="font-display text-xl text-ink-primary">Items</h2>
+              {catalogState === "loading" && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando catálogo…
+                </span>
+              )}
+              {catalogState === "ready" && (
+                <span className="text-xs text-ink-soft">
+                  {catalog.length} productos listos para escanear
+                </span>
+              )}
+              {catalogState === "error" && (
+                <span className="text-xs text-error font-semibold">
+                  No se pudo cargar el catálogo — cargá los items con el botón Manual
+                </span>
+              )}
+            </div>
 
-            {/* Add Item Form */}
-            <div className="bg-rose-whisper p-4 rounded-lg mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <input
-                  type="text"
-                  value={newItemProduct}
-                  onChange={(e) => setNewItemProduct(e.target.value)}
-                  className="input"
-                  placeholder="Producto"
-                />
-                <input
-                  type="number"
-                  value={newItemQuantity}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setNewItemQuantity(e.target.value.replace(/[.,].*$/, ""))}
-                  className="input"
-                  placeholder="Cantidad"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                />
-                <input
-                  type="text"
-                  value={newItemPrice}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    const formatted = raw.replace(/[^0-9,\.]/g, "");
-                    setNewItemPrice(formatted);
-                  }}
-                  onBlur={() => {
-                    const numeric = formatInputPrice(newItemPrice);
-                    setNewItemPrice(numeric ? formatPrice(numeric) : "");
-                  }}
-                  onFocus={() => {
-                    if (newItemPrice) {
-                      setNewItemPrice(String(formatInputPrice(newItemPrice)));
-                    }
-                  }}
-                  className="input"
-                  placeholder="$ 0,00"
-                />
-                <button
-                  onClick={addItem}
-                  className="btn-primary flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Agregar
-                </button>
-              </div>
+            {/* Escaneo / búsqueda / item manual */}
+            <div className="mb-6">
+              <ProductPicker
+                catalog={catalog}
+                reserved={reserved}
+                remitoItems={items}
+                onAdd={addItem}
+              />
             </div>
 
             {/* Items Table */}
@@ -277,6 +284,11 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                             }
                             className="input w-full"
                           />
+                          {item.wholesale && (
+                            <span className="mt-1 inline-flex items-center gap-0.5 bg-rose-deep text-white text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                              <Tag size={8} /> Mayorista
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <input

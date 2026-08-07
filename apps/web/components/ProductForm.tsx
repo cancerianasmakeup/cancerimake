@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical, Package } from "lucide-react";
+import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical, Package, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -47,6 +47,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
     cost: 0,
     stock: 0,
     sku: "",
+    barcode: "",
     images: [],
     videos: [],
     wholesale_tiers: [],
@@ -291,6 +292,9 @@ export default function ProductForm({ productId }: { productId?: string }) {
         compare_price: form.compare_price ? Number(form.compare_price) : null,
         cost: Number(form.cost ?? 0),
         stock: variantsActive ? variantsStockTotal : Number(form.stock ?? 0),
+        // Vacío = sin código. Va NULL para que el índice único parcial deje
+        // convivir muchos productos sin código de barras cargado.
+        barcode: (form.barcode ?? "").trim() || null,
         videos: form.videos ?? [],
         wholesale_tiers: sanitizeWholesaleTiers(form.wholesale_tiers ?? []),
       };
@@ -325,7 +329,11 @@ export default function ProductForm({ productId }: { productId?: string }) {
         router.replace(`/admin/products/${savedId}`);
       }
     } catch (e: any) {
-      toast.error(e.message);
+      if (e?.code === "23505" && String(e?.message ?? "").includes("barcode")) {
+        toast.error("Ese código de barras ya está cargado en otro producto");
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -849,6 +857,32 @@ export default function ProductForm({ productId }: { productId?: string }) {
                 onChange={(e) => setForm({ ...form, sku: e.target.value })}
                 placeholder="Opcional"
               />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-ink-primary mb-1 flex items-center gap-1.5">
+                <ScanBarcode className="w-4 h-4 text-rose-deep" />
+                Código de barras
+              </label>
+              <input
+                className="input font-mono tracking-wider"
+                value={form.barcode ?? ""}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                onKeyDown={(e) => {
+                  // La pistola lectora termina con Enter: acá no queremos que
+                  // eso mande el formulario, solo que confirme el campo.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder="Escaneá el código acá (o escribilo)"
+                autoComplete="off"
+              />
+              <p className="text-xs text-ink-soft mt-1">
+                Hacé clic en el campo y disparás con la pistola. Con esto el producto se
+                carga solo al armar presupuestos.
+              </p>
             </div>
           </div>
         </div>
