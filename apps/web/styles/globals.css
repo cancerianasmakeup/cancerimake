@@ -354,3 +354,51 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 5 Q25 15 20 25 Q15 15 20 5 Z' fill='%23FFB3C6' opacity='0.08'/%3E%3C/svg%3E");
   background-size: 200px 200px;
 }
+
+/* ============================================================
+   PORTAL DE ENTRADA (selector de tiendas)
+   ============================================================ */
+
+/* Aparición escalonada: cada bloque entra con un delay propio */
+@keyframes portal-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.portal-rise {
+  opacity: 0;
+  animation: portal-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Ken Burns: el fondo respira, nunca queda una foto quieta */
+@keyframes portal-zoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.14); }
+}
+.portal-zoom {
+  animation: portal-zoom 26s ease-in-out infinite alternate;
+}
+
+/* Latido del resplandor detrás del título */
+@keyframes portal-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.9; transform: scale(1.08); }
+}
+.portal-glow {
+  animation: portal-glow 6s ease-in-out infinite;
+}
+
+/* Movimiento sutil: el título flota apenas, sin distraer */
+@keyframes portal-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.portal-float {
+  animation: portal-float 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-rise { opacity: 1; animation: none; }
+  .portal-zoom,
+  .portal-glow,
+  .portal-float { animation: none; }
+}

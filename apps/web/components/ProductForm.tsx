@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Save, ArrowLeft, Plus, X, Image as ImageIcon, Trash2, Video as VideoIcon, Play, GripVertical, Package, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser, getCurrentStoreClient } from "@/lib/supabase-browser";
 import type { Category, Product, WholesaleTier } from "@cancerianas/shared";
 import { formatPrice, wholesaleTierInfo, sanitizeWholesaleTiers } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -129,6 +129,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
 
       const res = await fetch("/api/admin/uploads/product-image", {
         method: "POST",
+        headers: { "x-store-id": getCurrentStoreClient().id },
         body,
       });
 
@@ -247,7 +248,11 @@ export default function ProductForm({ productId }: { productId?: string }) {
     try {
       const body = new FormData();
       body.append("file", file);
-      const res = await fetch("/api/admin/uploads/product-image", { method: "POST", body });
+      const res = await fetch("/api/admin/uploads/product-image", {
+        method: "POST",
+        headers: { "x-store-id": getCurrentStoreClient().id },
+        body,
+      });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || "No se pudo subir la imagen");
       updateVariant(i, { image_url: json.url });

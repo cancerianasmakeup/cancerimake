@@ -112,4 +112,3 @@ CREATE POLICY "payment_proofs_admins_all" ON storage.objects
   FOR ALL TO authenticated
   USING (bucket_id = 'payment-proofs' AND public.is_admin())
   WITH CHECK (bucket_id = 'payment-proofs' AND public.is_admin());
-https://www.pink21.store/product-page/amore-blush

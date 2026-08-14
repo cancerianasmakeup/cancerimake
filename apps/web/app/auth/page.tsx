@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthForm from "@/components/AuthForm";
 import { BRAND } from "@/lib/brand";
+import { storeHomePath } from "@/lib/stores";
 
 export default function AuthPage() {
   return (
@@ -31,7 +32,7 @@ function AuthPageInner() {
         </div>
 
         <p className="text-center mt-6">
-          <a href="/" className="text-sm text-ink-soft hover:text-rose-deep">← Volver a la tienda</a>
+          <a href={storeHomePath()} className="text-sm text-ink-soft hover:text-rose-deep">← Volver a la tienda</a>
         </p>
       </div>
     </div>

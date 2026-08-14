@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { formatPrice } from "@cancerianas/shared";
 import { getOrderStatusLabel } from "@/lib/order-status";
+import { storeHomePath } from "@/lib/stores";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function MyOrdersPage() {
           <div className="card text-center py-16">
             <ShoppingBag className="w-12 h-12 mx-auto text-rose-deep mb-3" />
             <p className="text-ink-secondary mb-4">Todavía no tenés compras 🌸</p>
-            <Link href="/" className="btn-primary">Ir a la tienda</Link>
+            <Link href={storeHomePath()} className="btn-primary">Ir a la tienda</Link>
           </div>
         ) : (
           <div className="space-y-4">

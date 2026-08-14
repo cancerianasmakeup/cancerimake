@@ -26,3 +26,11 @@ yarn-error.log*
 # os
 .DS_Store
 Thumbs.db
+
+# backups de datos (dumps locales)
+backups/
+
+# vercel cli
+.vercel
+
+.vercel

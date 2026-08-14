@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createSupabaseServerForStore, storeIdFromRequest } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
@@ -34,7 +34,10 @@ function buildPublicUrl(baseUrl: string, key: string) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createSupabaseServer();
+    // La cookie de tienda tiene path=/admin y acá no llega: el cliente manda la
+    // tienda en x-store-id. Sin esto, subir una foto desde Mar del Plata se
+    // validaría contra la base de Buenos Aires.
+    const supabase = await createSupabaseServerForStore(storeIdFromRequest(request));
     const {
       data: { user },
     } = await supabase.auth.getUser();

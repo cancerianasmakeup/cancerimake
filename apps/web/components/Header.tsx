@@ -7,6 +7,7 @@ import { ShoppingCart, User, Menu, X, Sparkles, Zap } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { BRAND } from "@/lib/brand";
 import { DEFAULT_BRAND, type BrandInfo } from "@/lib/site-settings-types";
+import { storeHomePath } from "@/lib/stores";
 import {
   DEFAULT_STORE_STATUS,
   getStoreStatus,
@@ -15,6 +16,10 @@ import {
 } from "@cancerianas/shared";
 
 type AppearanceCfg = { show_announcement_bar?: boolean; announcement_text?: string; announcement_link?: string };
+
+// En el deploy con portal, "Inicio" y el logo van a /bsas: la raíz es la
+// pantalla de elección de tienda y llevaría a la clienta fuera de la tienda.
+const HOME = storeHomePath();
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -169,18 +174,18 @@ export default function Header() {
             scrolled ? "py-2" : "py-3"
           }`}
         >
-          <Link href="/" className="group flex items-center gap-2">
+          <Link href={HOME} className="group flex items-center gap-2">
             <img
               src={brand.logo_url}
               alt={brand.name}
               className={`w-auto object-contain transition-all duration-300 group-hover:rotate-[-4deg] group-hover:scale-105 ${
-                scrolled ? "h-9 md:h-10" : "h-10 md:h-12"
+                scrolled ? "h-11 md:h-12" : "h-14 md:h-16"
               }`}
             />
           </Link>
 
           <nav className="hidden md:flex items-center gap-7 text-ink-secondary font-medium">
-            <Link href="/" data-active={isActive("/") || undefined} className="nav-link hover:text-rose-deep">
+            <Link href={HOME} data-active={isActive(HOME) || undefined} className="nav-link hover:text-rose-deep">
               Inicio
             </Link>
             <Link href="/shop" data-active={isActive("/shop") || undefined} className="nav-link hover:text-rose-deep">
@@ -223,7 +228,7 @@ export default function Header() {
         {open && (
           <div className="md:hidden border-t border-rose-pastel bg-white/95 backdrop-blur">
             <nav className="flex flex-col p-4 gap-3">
-              <Link href="/" onClick={() => setOpen(false)} className="py-2 text-ink-secondary">Inicio</Link>
+              <Link href={HOME} onClick={() => setOpen(false)} className="py-2 text-ink-secondary">Inicio</Link>
               <Link href="/shop" onClick={() => setOpen(false)} className="py-2 text-ink-secondary">Tienda</Link>
               <Link href="/live" onClick={() => setOpen(false)} className="py-2 text-ink-secondary">LIVE</Link>
               <Link href="/orders" onClick={() => setOpen(false)} className="py-2 text-ink-secondary">Mis compras</Link>

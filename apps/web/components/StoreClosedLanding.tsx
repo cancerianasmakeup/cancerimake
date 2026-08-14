@@ -7,6 +7,7 @@ import { Sparkles, Mail, Phone, Bell, CheckCircle2, Home } from "lucide-react";
 import { toast } from "sonner";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { BRAND } from "@/lib/brand";
+import { storeHomePath } from "@/lib/stores";
 import {
   getStoreStatus,
   getCountdown,
@@ -43,7 +44,7 @@ export default function StoreClosedLanding({ config }: { config: StoreStatusConf
     <div className="min-h-screen petal-bg flex flex-col">
       {/* Mini header con logo */}
       <header className="px-4 pt-6 pb-2 flex items-center justify-between max-w-xl mx-auto w-full">
-        <Link href="/" className="p-2 rounded-full bg-white/70 hover:bg-white shadow text-ink-primary transition" aria-label="Ir al inicio">
+        <Link href={storeHomePath()} className="p-2 rounded-full bg-white/70 hover:bg-white shadow text-ink-primary transition" aria-label="Ir al inicio">
           <Home className="w-5 h-5" />
         </Link>
         <img
@@ -126,7 +127,7 @@ export default function StoreClosedLanding({ config }: { config: StoreStatusConf
           </div>
 
           <div className="mt-6 pt-5 border-t border-rose-pastel">
-            <Link href="/" className="btn-secondary w-full justify-center">
+            <Link href={storeHomePath()} className="btn-secondary w-full justify-center">
               Volvé al inicio
             </Link>
           </div>

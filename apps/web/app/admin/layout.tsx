@@ -1,7 +1,19 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { LayoutDashboard, Package, ShoppingCart, Sparkles, Users, BarChart3, Settings, ArrowLeft, FolderHeart, Truck, PackagePlus, Store, AlertTriangle, FileText } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import {
+  STORE_COOKIE,
+  getConfiguredStores,
+  getDefaultStoreId,
+  isStoreId,
+  resolveStore,
+  storeHomePath,
+} from "@/lib/stores";
+import AdminStoreChooser from "@/components/AdminStoreChooser";
+import AdminStoreLogin from "@/components/AdminStoreLogin";
+import AdminStoreSwitcher from "@/components/AdminStoreSwitcher";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -20,10 +32,30 @@ const NAV = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const stores = getConfiguredStores();
+  const cookieStore = await cookies();
+  const rawChoice = cookieStore.get(STORE_COOKIE)?.value;
+
+  // Con más de una tienda configurada, lo primero es elegir en cuál trabajar.
+  // Con una sola (mientras Mar del Plata no exista) se saltea y el panel entra
+  // derecho, igual que siempre.
+  if (stores.length > 1 && !isStoreId(rawChoice)) {
+    return <AdminStoreChooser stores={stores} />;
+  }
+
+  const store = resolveStore(rawChoice);
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth?redirect=/admin");
+  if (!user) {
+    // Cada tienda es un proyecto Supabase con su propio padrón de usuarios. Para
+    // la tienda de este deploy vale el login de siempre; para la otra hay que
+    // autenticarse contra SU base, y eso tiene que pasar bajo /admin (que es
+    // donde la cookie de tienda es visible). Mandarla a /auth la loguearía
+    // contra la base equivocada.
+    if (store.id === getDefaultStoreId()) redirect("/auth?redirect=/admin");
+    return <AdminStoreLogin store={store} stores={stores} />;
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -37,8 +69,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="card text-center max-w-md">
           <div className="text-5xl mb-3">🚫</div>
           <h1 className="font-display text-2xl text-ink-primary">No tenés acceso</h1>
-          <p className="text-ink-secondary mt-2 mb-6">Esta sección es solo para administradoras.</p>
-          <Link href="/" className="btn-primary">Volver a la tienda</Link>
+          <p className="text-ink-secondary mt-2 mb-6">
+            Tu usuario no es administrador en {store.shortName}.
+          </p>
+          {stores.length > 1 && (
+            <div className="mb-4">
+              <AdminStoreSwitcher current={store} stores={stores} />
+            </div>
+          )}
+          <Link href={storeHomePath()} className="btn-primary">Volver a la tienda</Link>
         </div>
       </div>
     );
@@ -50,7 +89,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="md:w-64 border-r border-rose-pastel bg-white/70 backdrop-blur sticky top-0 md:h-screen z-30 print:hidden">
         <div className="p-4 border-b border-rose-pastel">
           <Link href="/admin" className="font-display text-xl text-rose-deep">🌸 Admin</Link>
-          <p className="text-xs text-ink-soft mt-1">Cancerianas</p>
+          {stores.length > 1 ? (
+            <div className="mt-2">
+              <AdminStoreSwitcher current={store} stores={stores} />
+            </div>
+          ) : (
+            <p className="text-xs text-ink-soft mt-1">{store.name}</p>
+          )}
         </div>
         <nav className="p-2 flex md:flex-col overflow-x-auto">
           {NAV.map((item) => {
@@ -68,7 +113,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           })}
         </nav>
         <div className="hidden md:block absolute bottom-4 left-2 right-2">
-          <Link href="/" className="flex items-center gap-2 text-sm text-ink-soft hover:text-rose-deep px-4 py-2">
+          <Link href={storeHomePath()} className="flex items-center gap-2 text-sm text-ink-soft hover:text-rose-deep px-4 py-2">
             <ArrowLeft className="w-4 h-4" /> Volver a la tienda
           </Link>
         </div>

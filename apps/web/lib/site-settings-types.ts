@@ -2,6 +2,8 @@
 // supabase-server). Esto permite que componentes "use client" puedan tipar las
 // settings sin arrastrar dependencias de server.
 
+import { HEADER_LOGOS, getDefaultStoreId, getStore } from "./stores";
+
 export type BrandInfo = {
   name: string;
   tagline: string;
@@ -16,10 +18,16 @@ export type BrandInfo = {
   show_tiktok: boolean;
 };
 
+// Nombre y logo salen de la tienda que sirve ESTE deploy, no de una constante.
+// El header pinta estos valores en el primer render y recién después los cambia
+// por los de la base: con un valor fijo, la web de Mar del Plata mostraba por un
+// instante el logo de Buenos Aires.
+const TIENDA = getStore(getDefaultStoreId());
+
 export const DEFAULT_BRAND: BrandInfo = {
-  name: "Cancerianas",
+  name: TIENDA?.name ?? "Cancerianas",
   tagline: "Para mujeres libres",
-  logo_url: "https://pub-4cc128b92e8340509487ec06143abf2e.r2.dev/cancerianas/LOGO%20HOR%202.png",
+  logo_url: HEADER_LOGOS[getDefaultStoreId()],
   whatsapp: "",
   whatsapp_default_message: "¡Hola! Tengo una consulta sobre la tienda.",
   instagram_url: "https://instagram.com",
