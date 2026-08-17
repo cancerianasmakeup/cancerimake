@@ -333,7 +333,7 @@ async function HomeOpen() {
           href={tiktokUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Seguinos en TikTok @cancerianas.makeup2"
+          aria-label={`Seguinos en TikTok @${tiktokHandle}`}
           className="group flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 hover:scale-[1.01] transition-transform active:scale-100"
         >
           {/* Logo sticker — con halo neón doble */}
