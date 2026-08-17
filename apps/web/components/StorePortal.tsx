@@ -47,7 +47,7 @@ export default function StorePortal({
   }
 
   return (
-    <main className="relative min-h-[100dvh] overflow-hidden bg-[#0B0509] flex items-center justify-center px-4 py-14">
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#0B0509] flex items-center justify-center px-4 py-10">
       {/* Capa 1 — póster fijo: se ve si el video no carga o si el sistema pidió
           menos movimiento. */}
       <div
@@ -73,13 +73,13 @@ export default function StorePortal({
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(11,5,9,0.6)_50%,rgba(11,5,9,0.95)_100%)]"
       />
 
-      <div className="relative w-full max-w-5xl text-center">
+      <div className="relative w-full max-w-4xl text-center">
         {/* BIENVENIDA — el bloque de presentación */}
         <div className="relative portal-rise" style={{ animationDelay: "0.05s" }}>
           {/* Resplandor rosa latiendo detrás del título */}
           <div
             aria-hidden
-            className="portal-glow pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,760px)] h-56 rounded-full bg-[radial-gradient(ellipse,rgba(255,64,129,0.35),transparent_70%)] blur-2xl"
+            className="portal-glow pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,760px)] h-44 rounded-full bg-[radial-gradient(ellipse,rgba(255,64,129,0.35),transparent_70%)] blur-2xl"
           />
 
           {/* Destellos alrededor, los mismos que usa la home */}
@@ -98,7 +98,7 @@ export default function StorePortal({
             style={{ animationDelay: "1.6s" }}
           />
 
-          <h1 className="bienvenida-text relative font-display text-5xl sm:text-7xl lg:text-8xl font-bold uppercase tracking-[0.12em] sm:tracking-[0.18em] leading-none">
+          <h1 className="bienvenida-text relative font-display text-4xl sm:text-6xl lg:text-7xl font-bold uppercase tracking-[0.12em] sm:tracking-[0.18em] leading-none">
             Bienvenida
           </h1>
         </div>
@@ -106,18 +106,18 @@ export default function StorePortal({
         {/* La animación de entrada va en el wrapper y el flote en el título:
             si compartieran elemento, las dos pelearían por el mismo transform. */}
         <div className="portal-rise relative mt-6" style={{ animationDelay: "0.25s" }}>
-          <h2 className="portal-float font-display text-4xl sm:text-6xl lg:text-7xl font-semibold text-white leading-[1.05] drop-shadow-[0_2px_30px_rgba(0,0,0,0.7)]">
+          <h2 className="portal-float font-display text-3xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.05] drop-shadow-[0_2px_30px_rgba(0,0,0,0.7)]">
             ¿Dónde querés comprar?
           </h2>
         </div>
         <p
-          className="portal-rise text-white/55 mt-3 mb-12 sm:mb-16 max-w-lg mx-auto text-sm sm:text-base"
+          className="portal-rise text-white/55 mt-3 mb-10 sm:mb-12 max-w-lg mx-auto text-sm sm:text-base"
           style={{ animationDelay: "0.4s" }}
         >
           Elegí tu tienda para ver los productos y los envíos de tu zona.
         </p>
 
-        <div className="grid gap-6 sm:gap-8 sm:grid-cols-2">
+        <div className="grid gap-5 sm:gap-6 sm:grid-cols-2">
           {stores.map((store, i) => {
             const entrando = pending === store.id;
             return (
@@ -134,7 +134,7 @@ export default function StorePortal({
                 onClick={() => pick(store)}
                 disabled={pending !== null}
                 aria-label={`Entrar a ${store.name}`}
-                className="group relative w-full h-full flex flex-col items-center gap-7 rounded-[2rem] border border-white/12 bg-white/[0.04] backdrop-blur-2xl p-8 sm:p-10 transition duration-300 hover:-translate-y-2 hover:border-rose-primary/70 hover:bg-white/[0.07] hover:shadow-[0_0_50px_-8px_rgba(255,143,163,0.55)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-primary/40 disabled:opacity-60 disabled:hover:translate-y-0"
+                className="group relative w-full h-full flex flex-col items-center gap-5 rounded-[2rem] border border-white/12 bg-white/[0.04] backdrop-blur-2xl p-6 sm:p-8 transition duration-300 hover:-translate-y-2 hover:border-rose-primary/70 hover:bg-white/[0.07] hover:shadow-[0_0_50px_-8px_rgba(255,143,163,0.55)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-primary/40 disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {/* Brillo superior: da volumen al vidrio */}
                 <span
@@ -154,19 +154,19 @@ export default function StorePortal({
                     alt={store.name}
                     width={800}
                     height={800}
-                    className="relative h-48 sm:h-56 lg:h-64 w-auto object-contain transition duration-500 group-hover:scale-[1.07] drop-shadow-[0_0_35px_rgba(255,143,163,0.35)]"
+                    className="relative h-36 sm:h-44 lg:h-52 w-auto object-contain transition duration-500 group-hover:scale-[1.07] drop-shadow-[0_0_35px_rgba(255,143,163,0.35)]"
                   />
                 )}
 
                 <div className="relative flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-rose-primary" />
-                  <span className="font-display text-lg sm:text-xl uppercase tracking-[0.18em] text-white">
+                  <span className="font-display text-base sm:text-lg uppercase tracking-[0.18em] text-white">
                     {store.shortName}
                   </span>
                 </div>
 
                 {/* Botón neón */}
-                <span className="relative w-full flex items-center justify-center gap-2.5 rounded-full border border-rose-primary/80 bg-gradient-to-r from-rose-deep to-rose-primary px-6 py-3.5 font-semibold uppercase tracking-[0.22em] text-sm text-white shadow-[0_0_18px_rgba(255,143,163,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] transition duration-300 group-hover:shadow-[0_0_28px_rgba(255,143,163,0.9),0_0_60px_rgba(230,107,133,0.5),inset_0_1px_0_rgba(255,255,255,0.5)]">
+                <span className="relative w-full flex items-center justify-center gap-2.5 rounded-full border border-rose-primary/80 bg-gradient-to-r from-rose-deep to-rose-primary px-5 py-3 font-semibold uppercase tracking-[0.22em] text-sm text-white shadow-[0_0_18px_rgba(255,143,163,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] transition duration-300 group-hover:shadow-[0_0_28px_rgba(255,143,163,0.9),0_0_60px_rgba(230,107,133,0.5),inset_0_1px_0_rgba(255,255,255,0.5)]">
                   {entrando ? "Entrando…" : "Entrar"}
                   {!entrando && (
                     <ArrowRight className="w-4 h-4 transition group-hover:translate-x-1" />

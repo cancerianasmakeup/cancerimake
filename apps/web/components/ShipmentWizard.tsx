@@ -17,7 +17,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser, getCurrentStoreClient } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
 import TransferInstructions from "@/components/TransferInstructions";
 import PaymentProofUploader from "@/components/PaymentProofUploader";
@@ -192,8 +192,8 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
     if (!cp || cp.length !== 4) return;
     setBusy(true);
     const { data: session } = await supabase.auth.getSession();
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/andreani?action=quote`;
-    const auth = `Bearer ${session.session?.access_token ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
+    const url = `${getCurrentStoreClient().supabaseUrl}/functions/v1/andreani?action=quote`;
+    const auth = `Bearer ${session.session?.access_token ?? getCurrentStoreClient().anonKey}`;
     const bultos = [{
       kilos: shipment.weight_grams / 1000,
       volumen: ((shipment.length_cm || 25) * (shipment.width_cm || 20) * (shipment.height_cm || 10)) / 1000,
@@ -363,7 +363,7 @@ export default function ShipmentWizard({ shipmentId }: { shipmentId: string }) {
     setStep("paying");
     const { data: session } = await supabase.auth.getSession();
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-preference`,
+      `${getCurrentStoreClient().supabaseUrl}/functions/v1/create-payment-preference`,
       {
         method: "POST",
         headers: {

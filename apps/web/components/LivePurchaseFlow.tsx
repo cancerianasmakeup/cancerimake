@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Clock, ExternalLink, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser, getCurrentStoreClient } from "@/lib/supabase-browser";
 import { formatPrice } from "@cancerianas/shared";
 import type { LivePurchase } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -45,7 +45,7 @@ export default function LivePurchaseFlow({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-preference`,
+        `${getCurrentStoreClient().supabaseUrl}/functions/v1/create-payment-preference`,
         {
           method: "POST",
           headers: {

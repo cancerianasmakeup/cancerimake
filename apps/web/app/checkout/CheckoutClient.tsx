@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, CreditCard, Truck, Mail, Phone, Info, Banknote, Home, MapPin, Package, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser, getCurrentStoreClient } from "@/lib/supabase-browser";
 import { formatPrice, calcPackageFromCart, calcCorreoArgentinoQuote, describePackage, isValidEmail, isValidPhoneAR } from "@cancerianas/shared";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -216,7 +216,7 @@ export default function CheckoutClient() {
         // Mercado Pago
         const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-preference`,
+          `${getCurrentStoreClient().supabaseUrl}/functions/v1/create-payment-preference`,
           { method: "POST", headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ type: "order", id: order.id }) }
         );
         const result = await res.json();

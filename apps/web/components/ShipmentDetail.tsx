@@ -18,7 +18,7 @@ import {
   Send,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser, getCurrentStoreClient } from "@/lib/supabase-browser";
 import { formatPrice, CARRIER_LABELS, type ShipmentCarrier } from "@cancerianas/shared";
 import { useConfirm } from "@/components/ConfirmDialog";
 
@@ -164,12 +164,12 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   async function callEdge(action: string, body: any = {}) {
     setBusy(action);
     const { data: session } = await supabase.auth.getSession();
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/andreani?action=${action}`;
+    const url = `${getCurrentStoreClient().supabaseUrl}/functions/v1/andreani?action=${action}`;
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.session?.access_token ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${session.session?.access_token ?? getCurrentStoreClient().anonKey}`,
       },
       body: JSON.stringify(body),
     });
@@ -197,12 +197,12 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   async function downloadLabel() {
     setBusy("label");
     const { data: session } = await supabase.auth.getSession();
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/andreani?action=label`;
+    const url = `${getCurrentStoreClient().supabaseUrl}/functions/v1/andreani?action=label`;
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.session?.access_token ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${session.session?.access_token ?? getCurrentStoreClient().anonKey}`,
       },
       body: JSON.stringify({ shipment_id: shipmentId }),
     });
@@ -265,7 +265,7 @@ export default function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
     setBusy("email");
     const { data: session } = await supabase.auth.getSession();
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-shipment`,
+      `${getCurrentStoreClient().supabaseUrl}/functions/v1/notify-shipment`,
       {
         method: "POST",
         headers: {
