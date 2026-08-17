@@ -32,27 +32,42 @@ export default async function StoreHome() {
 async function HomeOpen() {
   const supabase = await createSupabaseServer();
 
-  const [{ data: featured }, { data: categories }, { data: liveEvents }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("*, variants:product_variants(id)")
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(50),
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("is_active", true)
-      .order("display_order"),
-    supabase
-      .from("live_events")
-      .select("*")
-      .in("status", ["active", "draft"])
-      .order("created_at", { ascending: false })
-      .limit(3),
-  ]);
+  const [{ data: featured }, { data: categories }, { data: liveEvents }, { data: brandRow }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("*, variants:product_variants(id)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order"),
+      supabase
+        .from("live_events")
+        .select("*")
+        .in("status", ["active", "draft"])
+        .order("created_at", { ascending: false })
+        .limit(3),
+      supabase.from("site_settings").select("value").eq("key", "brand_info").maybeSingle(),
+    ]);
 
   const activeLive = (liveEvents as LiveEvent[] | null)?.find(e => e.status === "active");
+
+  // TikTok: sale de la configuracion de ESTA tienda, no de una constante.
+  // Cada sucursal tiene su propia cuenta y su propio numero de seguidoras.
+  const brand = (brandRow?.value ?? {}) as Record<string, string>;
+  const tiktokUrl = brand.tiktok_url || "https://www.tiktok.com/@cancerianas.makeup2";
+  const tiktokHandle = tiktokUrl.match(/@([^/?#]+)/)?.[1] ?? "cancerianas.makeup2";
+  // El usuario se parte en el primer punto para el degrade cyan->rosa.
+  const puntoIdx = tiktokHandle.indexOf(".");
+  const handleInicio = puntoIdx === -1 ? tiktokHandle : tiktokHandle.slice(0, puntoIdx + 1);
+  const handleFin = puntoIdx === -1 ? "" : tiktokHandle.slice(puntoIdx + 1);
+  // Sin dato cargado no se muestra el chip: una tienda nueva no tiene 10K
+  // seguidoras y anunciarlo seria mentir.
+  const tiktokSeguidoras = brand.tiktok_followers_text ?? "";
 
   return (
     <>
@@ -315,7 +330,7 @@ async function HomeOpen() {
       {/* TIKTOK BANNER — backstage neón */}
       <section className="max-w-6xl mx-auto px-4 mt-8 mb-4">
         <a
-          href="https://www.tiktok.com/@cancerianas.makeup2"
+          href={tiktokUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Seguinos en TikTok @cancerianas.makeup2"
@@ -378,16 +393,21 @@ async function HomeOpen() {
                     Tu pase al backstage
                   </p>
                   <p className="font-display text-2xl md:text-4xl font-black tracking-tight mt-1.5 leading-none">
-                    @cancerianas.<span className="bg-gradient-to-r from-[#25F4EE] to-[#FE2C55] bg-clip-text text-transparent">makeup2</span>
+                    @{handleInicio}
+                    <span className="bg-gradient-to-r from-[#25F4EE] to-[#FE2C55] bg-clip-text text-transparent">
+                      {handleFin}
+                    </span>
                   </p>
                   <p className="text-white/60 text-sm font-medium mt-2">
                     Drops, dinámicas y LIVES en TikTok
                   </p>
                   {/* Chips de comunidad */}
                   <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-3.5">
-                    <span className="inline-flex items-center gap-1.5 bg-white/[0.07] border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-white/85">
-                      🔥 +10K seguidoras
-                    </span>
+                    {tiktokSeguidoras && (
+                      <span className="inline-flex items-center gap-1.5 bg-white/[0.07] border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-white/85">
+                        🔥 {tiktokSeguidoras}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1.5 bg-white/[0.07] border border-white/15 rounded-full px-3 py-1 text-[11px] font-bold text-white/85">
                       <span className="relative flex w-1.5 h-1.5">
                         <span className="absolute inset-0 rounded-full bg-[#FE2C55] animate-ping opacity-75" />
