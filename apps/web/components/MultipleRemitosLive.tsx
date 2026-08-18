@@ -106,7 +106,7 @@ export default function MultipleRemitosLive() {
             if (existing) {
               const totalQty = existing.quantity + item.quantity;
               const prod = catalog.find((p) => p.id === item.productId);
-              const pricing = prod ? unitPriceFor(prod, totalQty) : null;
+              const pricing = prod ? unitPriceFor(prod, totalQty, r.saleMode ?? "normal") : null;
               return {
                 ...r,
                 items: r.items.map((i) =>

@@ -208,6 +208,24 @@ export async function generateRemitoPDF(remito: Remito) {
     yPosition + 12
   );
 
+  // Modalidad de venta: deja constancia de bajo qué condición se armó el
+  // remito, que es lo que explica los precios de la tabla de abajo.
+  const MODALIDADES: Record<string, string> = {
+    vivo6: "VIVO X 6",
+    vivo_media: "VIVO 1/2 CAJA",
+    vivo_caja: "VIVO CAJA ENTERA",
+  };
+  const modalidad = MODALIDADES[remito.saleMode ?? "normal"];
+  if (modalidad) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...colors.roseDeep);
+    doc.text(`Modalidad: ${modalidad}`, pageWidth - margin - 4, yPosition + 12, {
+      align: "right",
+    });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.inkSecondary);
+  }
+
   yPosition += 22;
 
   // ========================

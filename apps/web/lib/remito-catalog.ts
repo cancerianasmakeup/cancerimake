@@ -44,20 +44,142 @@ export function normalizeBarcode(s: string): string {
   return s.replace(/[\s-]/g, "").toUpperCase();
 }
 
-// Precio unitario a aplicar según cantidad: si alcanza un tier mayorista,
-// usa el del tier más grande que entre en la cantidad. El cálculo del precio
-// unitario vive en wholesaleTierInfo (shared), que soporta tiers cargados
-// como total del pack O como precio por unidad.
-export function unitPriceFor(p: CatalogProduct, qty: number) {
-  let tier: WholesaleTier | null = null;
-  for (const t of p.tiers) {
-    if (qty >= t.units) tier = t; // tiers vienen ordenados por units asc
+// ============================================================
+// MODALIDADES DE VENTA
+// ============================================================
+// Vendiendo en vivo el precio no depende solo de cuánto se lleva: se anuncia
+// "hoy todo a precio de caja" y esa condición vale para todo el remito.
+//
+// Las tres modalidades son la misma regla con distinto piso: la modalidad fija
+// un pack MÍNIMO, y se aplica el mejor entre lo que la cantidad gana sola y ese
+// piso. Por eso "VIVO X 6" sigue dando media caja si la clienta lleva 12.
+export type SaleMode = "normal" | "vivo6" | "vivo_media" | "vivo_caja";
+
+export const SALE_MODES: { id: SaleMode; label: string; hint: string }[] = [
+  { id: "normal", label: "Normal", hint: "El precio sale de la cantidad, como siempre" },
+  { id: "vivo6", label: "VIVO X 6", hint: "Desde 1 unidad pagan precio de 6" },
+  { id: "vivo_media", label: "VIVO ½ CAJA", hint: "Desde 1 unidad pagan precio de media caja" },
+  { id: "vivo_caja", label: "VIVO CAJA ENTERA", hint: "Desde 1 unidad pagan precio de caja" },
+];
+
+// Los packs se cargan a mano y los nombres vienen sucios: hay "MEDIA  CAJA"
+// con doble espacio y "3 UNIDQADES". Tampoco sirve identificarlos por cantidad,
+// porque "CAJA ENTERA" son 24 unidades en unos productos y 12 en otros.
+function normLabel(s: string): string {
+  return s
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// ¿El pack representa la caja/paquete completo? Se mira el nombre y no la
+// cantidad, porque "CAJA ENTERA" son 24 unidades en unos productos y 12 en
+// otros, y hay uno que se llama "PAQUETE ENTERO".
+function esCajaEntera(t: WholesaleTier): boolean {
+  const l = normLabel(t.label);
+  return (l.includes("CAJA") || l.includes("PAQUETE")) && !l.includes("MEDIA");
+}
+
+/**
+ * El pack que la modalidad quiere cobrar en este producto.
+ *
+ * Si el producto no tiene ese pack, cae al más grande que NO lo supere. El
+ * respaldo siempre baja, nunca sube: en "VIVO X 6" un producto que solo tenga
+ * media caja no puede terminar cobrándose a media caja, porque saldría más
+ * barato que el precio de 6 que se anunció. En ese caso va a precio de lista.
+ *
+ * Devuelve null cuando no hay ningún pack aplicable.
+ */
+function floorTierFor(p: CatalogProduct, mode: SaleMode): WholesaleTier | null {
+  const tiers = p.tiers; // ya vienen ordenados por units asc
+  if (mode === "normal" || !tiers.length) return null;
+
+  if (mode === "vivo_caja") {
+    // El pack más grande que tenga: resuelve solo las cajas de 12, las de 24
+    // y los "PAQUETE ENTERO".
+    return tiers[tiers.length - 1];
   }
+
+  if (mode === "vivo_media") {
+    const media = tiers.find((t) => normLabel(t.label).includes("MEDIA"));
+    if (media) return media;
+    // Sin pack de media caja hay que bajar un escalón, pero solo si el más
+    // grande ES la caja. Si el producto llega hasta "6 UNIDADES" y nada más,
+    // ese es su techo y ahí se queda: tomar el anterior (el de 3) saldría MÁS
+    // CARO que VIVO X 6 y dejaría las modalidades desordenadas.
+    const mayor = tiers[tiers.length - 1];
+    return esCajaEntera(mayor) && tiers.length > 1 ? tiers[tiers.length - 2] : mayor;
+  }
+
+  // vivo6
+  const seis = tiers.find((t) => t.units === 6) ?? tiers.find((t) => /(^|\D)6(\D|$)/.test(normLabel(t.label)));
+  if (seis) return seis;
+  // Sin pack de 6: el más grande que no pase de 6 unidades (típicamente el de 3).
+  const menores = tiers.filter((t) => t.units <= 6);
+  return menores.length ? menores[menores.length - 1] : null;
+}
+
+export interface PricingResult {
+  unit: number;
+  wholesale: boolean;
+  tier: WholesaleTier | null;
+  discountPct: number;
+  /** true si la modalidad pedía un pack que este producto no tiene cargado. */
+  modeFallback: boolean;
+}
+
+// Precio unitario a aplicar según cantidad y modalidad.
+//
+// Sin modalidad se comporta igual que siempre: el tier más grande que entre en
+// la cantidad. Con modalidad, ese tier compite contra el piso y gana el mayor.
+//
+// El cálculo del precio unitario vive en wholesaleTierInfo (shared), que
+// soporta tiers cargados como total del pack O como precio por unidad.
+export function unitPriceFor(
+  p: CatalogProduct,
+  qty: number,
+  mode: SaleMode = "normal"
+): PricingResult {
+  let porCantidad: WholesaleTier | null = null;
+  for (const t of p.tiers) {
+    if (qty >= t.units) porCantidad = t; // tiers vienen ordenados por units asc
+  }
+
+  const piso = floorTierFor(p, mode);
+  // Gana el de más unidades: así "VIVO X 6" con 12 unidades cobra media caja.
+  const tier =
+    piso && (!porCantidad || piso.units > porCantidad.units) ? piso : porCantidad;
+
+  // La modalidad no se pudo respetar si pedía un pack y el producto no tiene
+  // ninguno aplicable, o si el que hay es de menos unidades que el pedido.
+  const modeFallback = mode !== "normal" && (!piso || (tier?.units ?? 0) < unitsPedidas(p, mode));
+
   if (tier) {
     const info = wholesaleTierInfo(tier, p.price);
-    return { unit: info.unitPrice, wholesale: true, tier, discountPct: info.discountPct };
+    return {
+      unit: info.unitPrice,
+      wholesale: true,
+      tier,
+      discountPct: info.discountPct,
+      modeFallback,
+    };
   }
-  return { unit: p.price, wholesale: false, tier: null, discountPct: 0 };
+  return { unit: p.price, wholesale: false, tier: null, discountPct: 0, modeFallback };
+}
+
+// Cuántas unidades pide idealmente la modalidad en este producto, para saber si
+// el precio aplicado se quedó corto respecto de lo anunciado.
+function unitsPedidas(p: CatalogProduct, mode: SaleMode): number {
+  if (mode === "vivo6") return 6;
+  if (!p.tiers.length) return Infinity;
+  if (mode === "vivo_caja") return p.tiers[p.tiers.length - 1].units;
+  if (mode === "vivo_media") {
+    const media = p.tiers.find((t) => normLabel(t.label).includes("MEDIA"));
+    return media ? media.units : p.tiers[p.tiers.length - 1].units;
+  }
+  return 0;
 }
 
 // Busca un producto por código de barras exacto (o por SKU, así una etiqueta

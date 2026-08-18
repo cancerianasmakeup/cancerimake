@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2, Download, Loader, Loader2, Tag } from "lucide-react"
 import { formatPrice } from "@cancerianas/shared";
 import { generateRemitoPDF } from "@/lib/remito-pdf";
 import ProductPicker from "@/components/ProductPicker";
-import { unitPriceFor, useCatalog } from "@/lib/remito-catalog";
+import { SALE_MODES, unitPriceFor, useCatalog, type SaleMode } from "@/lib/remito-catalog";
 import type { Remito, RemitItem } from "@/types/remito";
 
 interface RemitosEditorProps {
@@ -20,6 +20,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
   const [clientPhone, setClientPhone] = useState(remito.clientPhone);
   const [notes, setNotes] = useState(remito.notes);
   const [items, setItems] = useState<RemitItem[]>(remito.items);
+  const [saleMode, setSaleMode] = useState<SaleMode>(remito.saleMode ?? "normal");
   const [deposit, setDeposit] = useState(remito.deposit || 0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -42,7 +43,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
         if (existing) {
           const totalQty = existing.quantity + item.quantity;
           const prod = catalog.find((p) => p.id === item.productId);
-          const pricing = prod ? unitPriceFor(prod, totalQty) : null;
+          const pricing = prod ? unitPriceFor(prod, totalQty, saleMode) : null;
           return prev.map((i) =>
             i.id === existing.id
               ? {
@@ -73,7 +74,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
         if (field === "quantity" && next.productId) {
           const prod = catalog.find((p) => p.id === next.productId);
           if (prod) {
-            const pricing = unitPriceFor(prod, next.quantity);
+            const pricing = unitPriceFor(prod, next.quantity, saleMode);
             next.price = pricing.unit;
             next.wholesale = pricing.wholesale;
           }
@@ -82,6 +83,42 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
       })
     );
   };
+
+  // Cambiar la modalidad reprecia TODO lo que ya está cargado: es una condición
+  // del remito entero, no de cada línea. Se avisa antes porque pisa precios que
+  // la operadora pudo haber tocado a mano.
+  const changeSaleMode = (mode: SaleMode) => {
+    if (mode === saleMode) return;
+    const conProducto = items.filter((i) => i.productId).length;
+    if (
+      conProducto > 0 &&
+      !confirm(
+        `Se van a recalcular los precios de ${conProducto} ${
+          conProducto === 1 ? "artículo" : "artículos"
+        } con la nueva modalidad. ¿Seguimos?`
+      )
+    ) {
+      return;
+    }
+    setSaleMode(mode);
+    setItems((prev) =>
+      prev.map((i) => {
+        if (!i.productId) return i; // los items manuales no se tocan
+        const prod = catalog.find((p) => p.id === i.productId);
+        if (!prod) return i;
+        const pricing = unitPriceFor(prod, i.quantity, mode);
+        return { ...i, price: pricing.unit, wholesale: pricing.wholesale };
+      })
+    );
+  };
+
+  // Líneas cuyo producto no tiene cargado el pack que pide la modalidad: se les
+  // aplicó el mejor precio disponible hacia abajo, y conviene revisarlas.
+  const sinPack = items.filter((i) => {
+    if (!i.productId || saleMode === "normal") return false;
+    const prod = catalog.find((p) => p.id === i.productId);
+    return prod ? unitPriceFor(prod, i.quantity, saleMode).modeFallback : false;
+  });
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -96,6 +133,7 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
       notes,
       items,
       deposit,
+      saleMode,
     };
     onUpdate(updated);
     alert("Remito guardado");
@@ -224,9 +262,54 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
               )}
             </div>
 
+            {/* PASO 1 — Modalidad de venta. Va antes del buscador a propósito:
+                define a qué precio entra todo lo que se cargue después. */}
+            <div className="mb-5 rounded-2xl border border-rose-pastel bg-rose-whisper/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-1">
+                1 · ¿Cómo se vende?
+              </p>
+              <p className="text-xs text-ink-secondary mb-3">
+                {SALE_MODES.find((m) => m.id === saleMode)?.hint}
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {SALE_MODES.map((m) => {
+                  const activo = m.id === saleMode;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => changeSaleMode(m.id)}
+                      aria-pressed={activo}
+                      className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition border ${
+                        activo
+                          ? "bg-rose-deep text-white border-rose-deep shadow-md"
+                          : "bg-white text-ink-secondary border-rose-pastel hover:border-rose-deep hover:text-rose-deep"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {sinPack.length > 0 && (
+                <p className="mt-3 text-xs text-ink-secondary bg-white border border-warning/50 rounded-xl px-3 py-2">
+                  <strong>{sinPack.length}</strong>{" "}
+                  {sinPack.length === 1 ? "artículo no tiene" : "artículos no tienen"} ese pack
+                  cargado. Quedaron al mejor precio disponible hacia abajo — revisalos abajo, están
+                  marcados.
+                </p>
+              )}
+            </div>
+
             {/* Escaneo / búsqueda / item manual */}
             <div className="mb-6">
-              <ProductPicker catalog={catalog} remitoItems={items} onAdd={addItem} />
+              <ProductPicker
+                catalog={catalog}
+                remitoItems={items}
+                onAdd={addItem}
+                saleMode={saleMode}
+              />
             </div>
 
             {/* Items Table */}
@@ -269,11 +352,20 @@ export default function RemitosEditor({ remito, onUpdate, onBack }: RemitosEdito
                             }
                             className="input w-full"
                           />
-                          {item.wholesale && (
-                            <span className="mt-1 inline-flex items-center gap-0.5 bg-rose-deep text-white text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full">
-                              <Tag size={8} /> Mayorista
-                            </span>
-                          )}
+                          <span className="flex flex-wrap gap-1 mt-1">
+                            {item.wholesale && (
+                              <span className="inline-flex items-center gap-0.5 bg-rose-deep text-white text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                                <Tag size={8} /> Mayorista
+                              </span>
+                            )}
+                            {/* La modalidad pedía un pack que este producto no
+                                tiene: se cobró el mejor precio hacia abajo. */}
+                            {sinPack.some((s) => s.id === item.id) && (
+                              <span className="inline-flex items-center gap-0.5 bg-warning text-ink-primary text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                                Sin ese pack
+                              </span>
+                            )}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <input

@@ -9,6 +9,7 @@ import {
   normalize,
   normalizeBarcode,
   unitPriceFor,
+  type SaleMode,
   findByScan,
   type CatalogProduct,
 } from "@/lib/remito-catalog";
@@ -32,11 +33,14 @@ export default function ProductPicker({
   remitoItems,
   onAdd,
   autoFocus = false,
+  saleMode = "normal",
 }: {
   catalog: CatalogProduct[];
   remitoItems: RemitItem[];
   onAdd: (item: Omit<RemitItem, "id">) => void;
   autoFocus?: boolean;
+  /** Modalidad del remito: define el pack mínimo al previsualizar el precio. */
+  saleMode?: SaleMode;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -116,7 +120,7 @@ export default function ProductPicker({
         .filter((i) => i.productId === selected.id)
         .reduce((s, i) => s + i.quantity, 0)
     : 0;
-  const pricing = selected ? unitPriceFor(selected, qty + already) : null;
+  const pricing = selected ? unitPriceFor(selected, qty + already, saleMode) : null;
 
   // Sin techo por stock: el presupuesto puede llevar más unidades de las que
   // hay cargadas en la tienda.

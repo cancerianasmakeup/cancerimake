@@ -1,3 +1,5 @@
+import type { SaleMode } from "@/lib/remito-catalog";
+
 export interface RemitItem {
   id: string;
   product: string;
@@ -18,4 +20,6 @@ export interface Remito {
   notes: string;
   deposit: number;
   status: "draft" | "sent";
+  /** Modalidad de venta: define el pack minimo que se cobra en cada linea. */
+  saleMode?: SaleMode;
 }
